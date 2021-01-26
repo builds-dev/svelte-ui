@@ -1,0 +1,29 @@
+name: dist
+on:
+  push:
+    tags:
+      - 'v*'
+      - '!v*-dist'
+jobs:
+  dist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          ref: dist
+          fetch-depth: 0
+      - run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+      - run: git merge origin/master
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 12.x
+      - run: npm ci
+      - run: npm run build
+      - run: |
+          git add --force ./dist
+          TAG="${GITHUB_REF#refs/tags/}-dist"
+          git commit -m "$TAG"
+          git tag -a "$TAG" -m "$TAG"
+      - run: git push --follow-tags
