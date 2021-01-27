@@ -2,12 +2,7 @@
 	import * as assert from 'uvu/assert'
 	import { tick, onMount } from 'svelte'
 	import { Box, Column, Viewport, content, px } from '../../src/index'
-
-	const min_scrollbar_width = 10
-	const has_scrollbar = element =>
-		getComputedStyle(element).overflowY !== 'hidden'
-			&& element.scrollHeight > element.clientHeight
-			&& element.clientWidth <= (element.offsetWidth - min_scrollbar_width)
+	import { has_scrollbar } from '../util'
 
 	let viewport
 	let content_height = px(50)
