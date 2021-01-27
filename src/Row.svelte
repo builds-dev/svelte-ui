@@ -22,11 +22,12 @@
 		& > ${element}[data-width-base=content] {
 			flex-basis: auto;
 			flex-grow: 0;
-		}
+		
 	`
 
 	export let ref = undefined
 	export let spacing = 0
+	export let style = ''
 
 	export let center_x = false
 	export let align_right = false
@@ -39,6 +40,7 @@
 	{ ...$$restProps }
 	class="{ row } { $$props.class || '' }"
 	style='
+		{ style };
 		align-items: { align_bottom ? 'flex-end' : center_y ? 'center' : 'flex-start' };
 		justify-content: { align_right ? 'flex-end' : center_x ? 'center' : 'flex-start' };
 	'
