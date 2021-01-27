@@ -20,7 +20,6 @@ export const reset = css`
 	margin: 0;
 	opacity: 1;
 	padding: 0;
-	pointer-events: auto;
 	position: relative;
 	resize: none;
 	text-decoration: none;

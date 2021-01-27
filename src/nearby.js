@@ -1,6 +1,7 @@
 import { css } from '@linaria/core'
 import { element } from './element'
 
+// TODO: pointer-events: none could be avoided by only expanding the wrapper if the child wants to fill the available space
 export const nearby = css`
 	position: static;
 	margin: 0;
@@ -9,7 +10,7 @@ export const nearby = css`
 
 export const nearby_container = css`
 	position: absolute !important;
-	pointer-events: none !important;
+	pointer-events: auto !important;
 	z-index: 1;
 `
 

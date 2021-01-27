@@ -9,12 +9,12 @@ An elm-ui like thing for expressing UI in a reasonable way.
 ## latest
 npm install holographio/svelte-ui#dist
 ## version
-npm install holographio/svelte-ui#0.0.1
+npm install holographio/svelte-ui#v0.0.3-dist
 ```
 
 ```html
 <script>
-import { Viewport, Box, Column, Row } from 'holographio/svelte-ui'
+import { Viewport, Box, Column, Row } from '@holographio/svelte-ui'
 
 <Viewport>
 	<Column width={fill}>
@@ -65,17 +65,20 @@ This library holds the position that alignment of children should be expressed o
 ### run all tests headless:
 
 ```sh
-npm run test
+npm test
+npm run test:watch
 ```
 
 ### run a specific test file headless:
 
 ```sh
-npm run test -- $file_path
+npm run test -- test/whatever/some_thing.test.svelte
 ```
 
 ### open a specific test in the browser
 
+with live reloading when files change.
+
 ```sh
-npm run dev -- $file_path
+npm run debug -- test/whatever/some_thing.test.svelte
 ```

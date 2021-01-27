@@ -6,6 +6,5 @@ export const viewport  = css`
 	left: 0;
 	height: 100%;
 	width: 100%;
-	pointer-events: none;
 	-webkit-overflow-scrolling: touch;
 `

@@ -2,12 +2,9 @@
 	import * as assert from 'uvu/assert'
 	import { tick, onMount } from 'svelte'
 	import { Box, Column, Viewport, content, px } from '../../src/index'
-
-	const has_scrollbar = element =>
-		getComputedStyle(element).overflowY !== 'hidden' && element.scrollHeight > element.clientHeight
+	import { has_scrollbar } from '../util'
 
 	let viewport
-	let column
 	let content_height = px(50)
 	let scroll_y = true
 
@@ -24,6 +21,6 @@
 
 <Viewport bind:ref={viewport} {scroll_y}>
 	<Column height={content}>
-		<Box height={content_height}/>
+		<Box height={content_height}></Box>
 	</Column>
 </Viewport>

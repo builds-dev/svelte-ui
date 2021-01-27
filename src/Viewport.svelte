@@ -18,14 +18,7 @@
 	let x = 0
 	let y = 0
 
-	export const fix_position = () => {
-		const { top, left } = document.body.getBoundingClientRect()
-		x = -left
-		y = -top
-	}
-
 	const render = node => {
-		fix_position()
 		document.body.appendChild(node)
 		display = 'contents'
 	}
