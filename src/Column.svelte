@@ -27,6 +27,7 @@
 
 	export let ref = undefined
 	export let spacing = 0
+	export let style = ''
 
 	export let center_x = false
 	export let align_right = false
@@ -39,6 +40,7 @@
 	{ ...$$restProps }
 	class="{ column } { $$props.class || '' }"
 	style='
+		{ style };
 		justify-content: { align_bottom ? 'flex-end' : center_y ? 'center' : 'flex-start' };
 		align-items: { align_right ? 'flex-end' : center_x ? 'center' : 'flex-start' };
 	'

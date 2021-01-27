@@ -3,17 +3,17 @@ import { css } from '@linaria/core'
 export const image = css`
 	display: block;
 
-	& img {
+	& > img {
 		object-fit: cover;
 		max-width: 100%;
 		max-height: 100%;
 	}
 
-	&[data-height-base=fill] img {
+	&[data-height-base=fill] > img {
 		height: 100%;
 	}
 
-	&[data-width-base=fill] img {
+	&[data-width-base=fill] > img {
 		width: 100%;
 	}
 `
