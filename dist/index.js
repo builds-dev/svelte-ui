@@ -507,7 +507,7 @@ styleInject(css_248z);
 
 const element$1 = "element_ekolm46";
 
-var css_248z$1 = ".nearby_n1ymrolb{position:static;margin:0;pointer-events:none;}\n.nearby_container_nc97fwj{position:absolute !important;pointer-events:none !important;z-index:1;}\n.nearby_x_n1dmxc9z{top:0;height:100%;-webkit-align-items:flex-start;-webkit-box-align:flex-start;-ms-flex-align:flex-start;align-items:flex-start;}.nearby_x_n1dmxc9z > .element_ekolm46[data-height-base=fill]{height:100%;}\n.nearby_y_n91qj6k{left:0;width:100%;}.nearby_y_n91qj6k > .element_ekolm46[data-width-base=fill]{width:100%;}\n.in_back_i1ulrqav{z-index:0;}\n.on_left_o1xlmqx2{right:100%;-webkit-box-pack:end;-webkit-justify-content:flex-end;-ms-flex-pack:end;justify-content:flex-end;}\n.on_right_okq8kx3{left:100%;}\n.above_a105wjvu{bottom:100%;}\n.below_byr7vx7{top:100%;}\n";
+var css_248z$1 = ".nearby_n1ymrolb{position:static;margin:0;pointer-events:none;}\n.nearby_container_nc97fwj{position:absolute !important;pointer-events:auto !important;z-index:1;}\n.nearby_x_n1dmxc9z{top:0;height:100%;-webkit-align-items:flex-start;-webkit-box-align:flex-start;-ms-flex-align:flex-start;align-items:flex-start;}.nearby_x_n1dmxc9z > .element_ekolm46[data-height-base=fill]{height:100%;}\n.nearby_y_n91qj6k{left:0;width:100%;}.nearby_y_n91qj6k > .element_ekolm46[data-width-base=fill]{width:100%;}\n.in_back_i1ulrqav{z-index:0;}\n.on_left_o1xlmqx2{right:100%;-webkit-box-pack:end;-webkit-justify-content:flex-end;-ms-flex-pack:end;justify-content:flex-end;}\n.on_right_okq8kx3{left:100%;}\n.above_a105wjvu{bottom:100%;}\n.below_byr7vx7{top:100%;}\n";
 styleInject(css_248z$1);
 
 const nearby = "nearby_n1ymrolb";
@@ -589,7 +589,7 @@ class Spacing_Context extends SvelteComponent {
 	}
 }
 
-var css_248z$2 = ".reset_rcbd2q{-webkit-align-self:auto;-ms-flex-item-align:auto;align-self:auto;border-color:#000000;border-style:solid;border-width:0;box-sizing:border-box;color:inherit;display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-basis:auto;-ms-flex-preferred-size:auto;flex-basis:auto;-webkit-flex-direction:row;-ms-flex-direction:row;flex-direction:row;-webkit-flex-shrink:0;-ms-flex-negative:0;flex-shrink:0;-webkit-flex-wrap:nowrap;-ms-flex-wrap:nowrap;flex-wrap:nowrap;font-family:inherit;font-size:inherit;font-style:inherit;font-weight:inherit;line-height:1;margin:0;opacity:1;padding:0;pointer-events:auto;position:relative;resize:none;-webkit-text-decoration:none;text-decoration:none;}\n";
+var css_248z$2 = ".reset_rcbd2q{-webkit-align-self:auto;-ms-flex-item-align:auto;align-self:auto;border-color:#000000;border-style:solid;border-width:0;box-sizing:border-box;color:inherit;display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-basis:auto;-ms-flex-preferred-size:auto;flex-basis:auto;-webkit-flex-direction:row;-ms-flex-direction:row;flex-direction:row;-webkit-flex-shrink:0;-ms-flex-negative:0;flex-shrink:0;-webkit-flex-wrap:nowrap;-ms-flex-wrap:nowrap;flex-wrap:nowrap;font-family:inherit;font-size:inherit;font-style:inherit;font-weight:inherit;line-height:1;margin:0;opacity:1;padding:0;position:relative;resize:none;-webkit-text-decoration:none;text-decoration:none;}\n";
 styleInject(css_248z$2);
 
 const reset = "reset_rcbd2q";
@@ -5079,7 +5079,7 @@ class Column extends SvelteComponent {
 
 }
 
-var css_248z$7 = ".image_i1b6qkac{display:block;}.image_i1b6qkac > img{object-fit:cover;max-width:100%;max-height:100%;}.image_i1b6qkac[data-height-base=fill] > img{height:100%;}.image_i1b6qkac[data-width-base=fill] > img{width:100%;}\n";
+var css_248z$7 = ".image_i1b6qkac > img{display:block;object-fit:cover;}.image_i1b6qkac[data-height-base=fill] > img{height:100%;}.image_i1b6qkac[data-width-base=fill] > img{width:100%;}\n";
 styleInject(css_248z$7);
 
 const image = "image_i1b6qkac";
@@ -5096,13 +5096,20 @@ function create_default_slot$b(ctx) {
 			this.h();
 		},
 		l(nodes) {
-			img = claim_element(nodes, "IMG", { class: true, src: true, alt: true });
+			img = claim_element(nodes, "IMG", {
+				class: true,
+				src: true,
+				alt: true,
+				style: true
+			});
+
 			this.h();
 		},
 		h() {
-			attr(img, "class", "" + (image + " " + element$1));
+			attr(img, "class", element$1);
 			if (img.src !== (img_src_value = /*src*/ ctx[1])) attr(img, "src", img_src_value);
 			attr(img, "alt", /*description*/ ctx[2]);
+			set_style(img, "object-position", /*origin_x*/ ctx[3] * 100 + "% " + /*origin_y*/ ctx[4] * 100 + "%");
 		},
 		m(target, anchor) {
 			insert(target, img, anchor);
@@ -5114,6 +5121,10 @@ function create_default_slot$b(ctx) {
 
 			if (dirty & /*description*/ 4) {
 				attr(img, "alt", /*description*/ ctx[2]);
+			}
+
+			if (dirty & /*origin_x, origin_y*/ 24) {
+				set_style(img, "object-position", /*origin_x*/ ctx[3] * 100 + "% " + /*origin_y*/ ctx[4] * 100 + "%");
 			}
 		},
 		d(detaching) {
@@ -5131,9 +5142,6 @@ function create_fragment$e(ctx) {
 		/*$$restProps*/ ctx[5],
 		{
 			class: "" + (image + " " + (/*$$props*/ ctx[6].class || ""))
-		},
-		{
-			style: "object-position: " + /*origin_x*/ ctx[3] * 100 + "% " + /*origin_y*/ ctx[4] * 100 + "%);"
 		}
 	];
 
@@ -5169,19 +5177,16 @@ function create_fragment$e(ctx) {
 			current = true;
 		},
 		p(ctx, [dirty]) {
-			const box_changes = (dirty & /*$$restProps, image, $$props, origin_x, origin_y*/ 120)
+			const box_changes = (dirty & /*$$restProps, image, $$props*/ 96)
 			? get_spread_update(box_spread_levels, [
 					dirty & /*$$restProps*/ 32 && get_spread_object(/*$$restProps*/ ctx[5]),
 					dirty & /*image, $$props*/ 64 && {
 						class: "" + (image + " " + (/*$$props*/ ctx[6].class || ""))
-					},
-					dirty & /*origin_x, origin_y*/ 24 && {
-						style: "object-position: " + /*origin_x*/ ctx[3] * 100 + "% " + /*origin_y*/ ctx[4] * 100 + "%);"
 					}
 				])
 			: {};
 
-			if (dirty & /*$$scope, src, description*/ 262) {
+			if (dirty & /*$$scope, src, description, origin_x, origin_y*/ 286) {
 				box_changes.$$scope = { dirty, ctx };
 			}
 
@@ -5260,7 +5265,7 @@ class Image extends SvelteComponent {
 	}
 }
 
-var css_248z$8 = ".viewport_v1p95n9t{position:absolute;top:0;left:0;height:100%;width:100%;pointer-events:none;-webkit-overflow-scrolling:touch;}\n";
+var css_248z$8 = ".viewport_v1p95n9t{position:absolute;top:0;left:0;height:100%;width:100%;-webkit-overflow-scrolling:touch;}\n";
 styleInject(css_248z$8);
 
 const viewport = "viewport_v1p95n9t";
@@ -5269,8 +5274,8 @@ const viewport = "viewport_v1p95n9t";
 
 function create_default_slot$c(ctx) {
 	let current;
-	const default_slot_template = /*#slots*/ ctx[16].default;
-	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[18], null);
+	const default_slot_template = /*#slots*/ ctx[13].default;
+	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[15], null);
 
 	return {
 		c() {
@@ -5288,8 +5293,8 @@ function create_default_slot$c(ctx) {
 		},
 		p(ctx, dirty) {
 			if (default_slot) {
-				if (default_slot.p && dirty & /*$$scope*/ 262144) {
-					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[18], dirty, null, null);
+				if (default_slot.p && dirty & /*$$scope*/ 32768) {
+					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[15], dirty, null, null);
 				}
 			}
 		},
@@ -5317,19 +5322,19 @@ function create_fragment$f(ctx) {
 	let dispose;
 
 	function box_ref_binding(value) {
-		/*box_ref_binding*/ ctx[17].call(null, value);
+		/*box_ref_binding*/ ctx[14].call(null, value);
 	}
 
 	let box_props = {
-		class: "" + (viewport + " " + (/*$$props*/ ctx[14].class || "")),
+		class: "" + (viewport + " " + (/*$$props*/ ctx[12].class || "")),
 		center_x: /*center_x*/ ctx[1],
 		align_right: /*align_right*/ ctx[2],
 		center_y: /*center_y*/ ctx[3],
 		align_bottom: /*align_bottom*/ ctx[4],
-		x: /*x*/ ctx[9],
-		y: /*y*/ ctx[10],
-		clip_x: /*clip_x*/ ctx[11],
-		clip_y: /*clip_y*/ ctx[12],
+		x,
+		y,
+		clip_x: /*clip_x*/ ctx[9],
+		clip_y: /*clip_y*/ ctx[10],
 		scroll_x: /*scroll_x*/ ctx[6],
 		scroll_y: /*scroll_y*/ ctx[5],
 		style: /*style*/ ctx[7],
@@ -5367,26 +5372,24 @@ function create_fragment$f(ctx) {
 			current = true;
 
 			if (!mounted) {
-				dispose = action_destroyer(/*render*/ ctx[13].call(null, div));
+				dispose = action_destroyer(/*render*/ ctx[11].call(null, div));
 				mounted = true;
 			}
 		},
 		p(ctx, [dirty]) {
 			const box_changes = {};
-			if (dirty & /*$$props*/ 16384) box_changes.class = "" + (viewport + " " + (/*$$props*/ ctx[14].class || ""));
+			if (dirty & /*$$props*/ 4096) box_changes.class = "" + (viewport + " " + (/*$$props*/ ctx[12].class || ""));
 			if (dirty & /*center_x*/ 2) box_changes.center_x = /*center_x*/ ctx[1];
 			if (dirty & /*align_right*/ 4) box_changes.align_right = /*align_right*/ ctx[2];
 			if (dirty & /*center_y*/ 8) box_changes.center_y = /*center_y*/ ctx[3];
 			if (dirty & /*align_bottom*/ 16) box_changes.align_bottom = /*align_bottom*/ ctx[4];
-			if (dirty & /*x*/ 512) box_changes.x = /*x*/ ctx[9];
-			if (dirty & /*y*/ 1024) box_changes.y = /*y*/ ctx[10];
-			if (dirty & /*clip_x*/ 2048) box_changes.clip_x = /*clip_x*/ ctx[11];
-			if (dirty & /*clip_y*/ 4096) box_changes.clip_y = /*clip_y*/ ctx[12];
+			if (dirty & /*clip_x*/ 512) box_changes.clip_x = /*clip_x*/ ctx[9];
+			if (dirty & /*clip_y*/ 1024) box_changes.clip_y = /*clip_y*/ ctx[10];
 			if (dirty & /*scroll_x*/ 64) box_changes.scroll_x = /*scroll_x*/ ctx[6];
 			if (dirty & /*scroll_y*/ 32) box_changes.scroll_y = /*scroll_y*/ ctx[5];
 			if (dirty & /*style*/ 128) box_changes.style = /*style*/ ctx[7];
 
-			if (dirty & /*$$scope*/ 262144) {
+			if (dirty & /*$$scope*/ 32768) {
 				box_changes.$$scope = { dirty, ctx };
 			}
 
@@ -5420,6 +5423,9 @@ function create_fragment$f(ctx) {
 	};
 }
 
+let x = 0;
+let y = 0;
+
 function instance$f($$self, $$props, $$invalidate) {
 	let clip_x;
 	let clip_y;
@@ -5433,17 +5439,8 @@ function instance$f($$self, $$props, $$invalidate) {
 	let { scroll_x = true } = $$props;
 	let { style = "" } = $$props;
 	let display = "none";
-	let x = 0;
-	let y = 0;
-
-	const fix_position = () => {
-		const { top, left } = document.body.getBoundingClientRect();
-		$$invalidate(9, x = -left);
-		$$invalidate(10, y = -top);
-	};
 
 	const render = node => {
-		fix_position();
 		document.body.appendChild(node);
 		$$invalidate(8, display = "contents");
 	};
@@ -5454,7 +5451,7 @@ function instance$f($$self, $$props, $$invalidate) {
 	}
 
 	$$self.$$set = $$new_props => {
-		$$invalidate(14, $$props = assign(assign({}, $$props), exclude_internal_props($$new_props)));
+		$$invalidate(12, $$props = assign(assign({}, $$props), exclude_internal_props($$new_props)));
 		if ("ref" in $$new_props) $$invalidate(0, ref = $$new_props.ref);
 		if ("center_x" in $$new_props) $$invalidate(1, center_x = $$new_props.center_x);
 		if ("align_right" in $$new_props) $$invalidate(2, align_right = $$new_props.align_right);
@@ -5463,16 +5460,16 @@ function instance$f($$self, $$props, $$invalidate) {
 		if ("scroll_y" in $$new_props) $$invalidate(5, scroll_y = $$new_props.scroll_y);
 		if ("scroll_x" in $$new_props) $$invalidate(6, scroll_x = $$new_props.scroll_x);
 		if ("style" in $$new_props) $$invalidate(7, style = $$new_props.style);
-		if ("$$scope" in $$new_props) $$invalidate(18, $$scope = $$new_props.$$scope);
+		if ("$$scope" in $$new_props) $$invalidate(15, $$scope = $$new_props.$$scope);
 	};
 
 	$$self.$$.update = () => {
 		if ($$self.$$.dirty & /*scroll_x*/ 64) {
-			 $$invalidate(11, clip_x = !scroll_x);
+			 $$invalidate(9, clip_x = !scroll_x);
 		}
 
 		if ($$self.$$.dirty & /*scroll_y*/ 32) {
-			 $$invalidate(12, clip_y = !scroll_y);
+			 $$invalidate(10, clip_y = !scroll_y);
 		}
 	};
 
@@ -5488,13 +5485,10 @@ function instance$f($$self, $$props, $$invalidate) {
 		scroll_x,
 		style,
 		display,
-		x,
-		y,
 		clip_x,
 		clip_y,
 		render,
 		$$props,
-		fix_position,
 		slots,
 		box_ref_binding,
 		$$scope
@@ -5513,13 +5507,8 @@ class Viewport extends SvelteComponent {
 			align_bottom: 4,
 			scroll_y: 5,
 			scroll_x: 6,
-			style: 7,
-			fix_position: 15
+			style: 7
 		});
-	}
-
-	get fix_position() {
-		return this.$$.ctx[15];
 	}
 }
 
