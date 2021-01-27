@@ -2,8 +2,7 @@ import { suite } from 'uvu'
 import * as assert from 'uvu/assert'
 import tests from '../build/test-components'
 
-// NOTE: this is a lame substitute for an env var to keep the component alive for `npm run debug`
-const keep_alive = navigator.userAgent.toLowerCase().indexOf(' electron/') === -1
+const keep_alive = !navigator.userAgent.toLowerCase().includes('electron')
 
 const suites = tests
 	.map(({ path: file, export: Component }) => ({
@@ -26,7 +25,9 @@ Object.entries(suites)
 		tests.forEach(({ test_name, Component }) => {
 			test(test_name, () => {
 				const component = new Component({ target: document.body })
-				keep_alive || component.$destroy()
+				if (!keep_alive) {
+					component.$destroy()
+				}
 			})
 		})
 		test.run()
