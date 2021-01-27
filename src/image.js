@@ -1,12 +1,9 @@
 import { css } from '@linaria/core'
 
 export const image = css`
-	display: block;
-
 	& > img {
+		display: block;
 		object-fit: cover;
-		max-width: 100%;
-		max-height: 100%;
 	}
 
 	&[data-height-base=fill] > img {

@@ -14,7 +14,14 @@
 	bind:ref
 	{...$$restProps}
 	class="{ image } { $$props.class || '' }"
-	style="object-position: { origin_x * 100 }% { origin_y * 100 }%);"
+	
 >
-	<img class="{ image } { element }" {src} alt={description}/>
+	<img
+		class="{ element }"
+		{src}
+		alt={description}
+		style="
+			object-position: { origin_x * 100 }% { origin_y * 100 }%;
+		"
+	/>
 </Box>
