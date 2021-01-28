@@ -22,7 +22,7 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: |
-          git add --force ./dist/**/*
+          git add --force ./dist
           TAG="${GITHUB_REF#refs/tags/}-dist"
           git commit -m "$TAG"
           git tag -a "$TAG" -m "$TAG"
