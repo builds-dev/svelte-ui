@@ -24,6 +24,6 @@ jobs:
       - run: |
           git add --force ./dist
           TAG="${GITHUB_REF#refs/tags/}-dist"
-          git commit -m "$TAG"
+          git diff --quiet && git diff --staged --quiet || git commit -m "$TAG"
           git tag -a "$TAG" -m "$TAG"
       - run: git push --follow-tags
