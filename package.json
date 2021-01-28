@@ -18,7 +18,7 @@
   },
   "sideEffects": false,
   "scripts": {
-    "build": "rollup -c",
+    "build": "rm -rf dist/*; rollup -c",
     "debug": "f () { export RUN=debug; export GLOB=\"$1\"; rollup -w -c rollup.tests.config.js; }; f",
     "prepublishOnly": "npm run build",
     "test": "f () { export RUN=test; export GLOB=\"$1\"; rollup -c rollup.tests.config.js; }; f",
