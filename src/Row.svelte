@@ -7,7 +7,7 @@
 		flex-direction: row;
 
 		& > ${element}[data-height-base=fill] {
-			height: 100%;
+			align-self: stretch;
 		}
 
 		& > ${element}[data-width-base=fill] {
