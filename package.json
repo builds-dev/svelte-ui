@@ -5,14 +5,13 @@
   "keywords": [],
   "license": "ISC",
   "author": "Johnny Hauser <johnnyhauser@gmail.com>",
-  "type": "module",
   "svelte": "src/index.js",
   "main": "dist/index.js",
-  "module": "dist/esm/index.js",
-  "unpkg": "dist/index.min.js",
+  "module": "dist/esm/index.mjs",
+  "unpkg": "dist/index.umd.min.js",
   "exports": {
     ".": {
-      "import": "./dist/index.mjs",
+      "import": "./dist/esm/index.mjs",
       "require": "./dist/index.js"
     },
     "./package.json": "./package.json"

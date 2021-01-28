@@ -1,4 +1,3 @@
-import path from 'path'
 import resolve from '@rollup/plugin-node-resolve'
 import svelte from 'rollup-plugin-svelte'
 import linaria from '@linaria/rollup'
@@ -32,8 +31,9 @@ export default {
 	output: [
 		{
 			format: 'esm',
-			dir: path.dirname(pkg.module),
-			preserveModules: false,
+			file: pkg.module,
+			// dir: path.dirname(pkg.module),
+			// preserveModules: true,
 			sourcemap: false
 		},
 		{
