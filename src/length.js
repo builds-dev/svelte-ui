@@ -14,6 +14,6 @@ export const max = value => length => ({ ...length, max: value })
 export const length_css = (property, { base, min, max }) =>
 	`
 		--${property}-base-value: ${ base.value || 0 }${ base.type === 'px' ? 'px' : '' };
-		min-${property}: ${ min }px;
-		max-${property}: ${ max === Infinity ? 'none' : `${ max }px` };
+		${ min ? `min-${property}: ${ min }px;` : '' }
+		${ max == null || max === Infinity ? '' : `max-${property}: ${ max }px;` }
 	`
