@@ -19,6 +19,7 @@ export const reset = css`
 	line-height: 1;
 	margin: 0;
 	opacity: 1;
+	overflow: visible;
 	padding: 0;
 	position: relative;
 	resize: none;

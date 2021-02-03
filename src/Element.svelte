@@ -12,12 +12,14 @@
 	export let height = content
 	export let x = 0
 	export let y = 0
-	export let padding = 0
-	export let opacity = 1
+	export let padding = null
+	export let opacity = null
 	export let style = ''
-	$: padding_value = Array.isArray(padding)
-		? padding.map(n => `${n}px`).join(' ')
-		: `${padding}px`
+	$: opacity_style = opacity === null ? '' : `opacity: ${opacity};`
+	$: padding_style = padding === null
+		? ''
+		: `padding: ${Array.isArray(padding) ? padding.map(n => `${n}px`).join(' ') : `${padding}px` };`
+	$: transform_style = x || y ? `transform: translate3d(${ x }px, ${ y }px, 0);` : ''
 </script>
 
 <div
@@ -32,9 +34,9 @@
 		{ length_css('width', width) };
 		--context-spacing-x: { context_spacing.x }px;
 		--context-spacing-y: { context_spacing.y }px;
-		padding: { padding_value };
-		opacity: { opacity };
-		{ x || y ? `transform: translate3d(${ x }px, ${ y }px, 0);` : '' }
+		{ padding_style }
+		{ opacity_style }
+		{ transform_style }
 	"
 >
 	<Spacing_Context x={0} y={0}>

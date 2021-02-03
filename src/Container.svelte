@@ -25,7 +25,9 @@
 		}
 	`
 
-	const overflow = (axis, clip, scroll) => `overflow-${axis}: ${clip ? 'hidden' : scroll ? 'auto' : 'visible'};`
+	const overflow = (axis, clip, scroll) => clip || scroll
+		? `overflow-${axis}: ${clip ? 'hidden' : 'auto'};`
+		: ''
 </script>
 
 <Element

@@ -5,6 +5,8 @@
 
 	const column = css`
 		flex-direction: column;
+		justify-content: flex-start;
+		align-items: flex-start;
 
 		& > ${element}[data-height-base=fill] {
 			flex-basis: 0;
@@ -33,6 +35,9 @@
 	export let align_right = false
 	export let center_y = false
 	export let align_bottom = false
+
+	$: justify_content_style = align_bottom || center_y ? `justify-content: ${ align_bottom ? 'flex-end' : 'center' };` : ''
+	$: align_items_style = align_right || center_x ? `align-items: ${ align_right ? 'flex-end' : 'center' };` : ''
 </script>
 
 <Container
@@ -41,8 +46,8 @@
 	class="{ column } { $$props.class || '' }"
 	style='
 		{ style };
-		justify-content: { align_bottom ? 'flex-end' : center_y ? 'center' : 'flex-start' };
-		align-items: { align_right ? 'flex-end' : center_x ? 'center' : 'flex-start' };
+		{ justify_content_style }
+		{ align_items_style }
 	'
 	spacing_y={ spacing }
 >
