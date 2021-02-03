@@ -51,11 +51,5 @@
 	'
 	spacing_y={ spacing }
 >
-	<slot name='in_back' slot='in_back'/>
 	<slot/>
-	<slot name='above' slot='above'/>
-	<slot name='below' slot='below'/>
-	<slot name='on_left' slot='on_left'/>
-	<slot name='on_right' slot='on_right'/>
-	<slot name='in_front' slot='in_front'/>
 </Container>

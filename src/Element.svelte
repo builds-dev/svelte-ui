@@ -3,6 +3,7 @@
 	import { reset } from './reset'
 	import { element } from './element'
 	import { content, length_css } from './length'
+	import { in_back, nearby } from './nearby'
 
 	const context_spacing = get_spacing_context()
 

@@ -60,6 +60,10 @@ As you can see, `alignRight` on the `baz` element did not cause it to render dif
 
 This library holds the position that alignment of children should be expressed on the parent. This is like css flex row with `justify-content`.
 
+## caveats
+
+For the sake of performance and due to Svelte limitations, nearby elements are implemented such that source order is more important than it should be, especially `<In_back>`. `<In_back>` should always be the first child of its parent until this can be remedied.
+
 ## running the tests
 
 ### run all tests headless:
