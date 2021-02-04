@@ -1,55 +1,18 @@
 <script>
-	import Container from './Container.svelte'
-	import { css } from '@linaria/core'
-	import { element } from './element'
-
-	export const row = css`
-		flex-direction: row;
-		justify-content: flex-start;
-		align-items: flex-start;
-
-		& > ${element}[data-height-base=fill] {
-			align-self: stretch;
-		}
-
-		& > ${element}[data-width-base=fill] {
-			flex-basis: 0;
-			flex-grow: var(--width-base-value);
-		}
-
-		& > ${element}[data-height-base=content] {
-			height: auto;
-		}
-
-		& > ${element}[data-width-base=content] {
-			flex-basis: auto;
-			flex-grow: 0;
-		
-	`
+	import Layout from './Layout.svelte'
+	import { layout_x, layout_x_style } from './layout'
 
 	export let ref = undefined
-	export let spacing = 0
-	export let style = ''
-
-	export let center_x = false
-	export let align_right = false
-	export let center_y = false
-	export let align_bottom = false
-
-	$: justify_content_style = align_right || center_x ? `justify-content: ${ align_right ? 'flex-end' : 'center' };` : ''
-	$: align_items_style = align_bottom || center_y ? `align-items: ${ align_bottom ? 'flex-end' : 'center' };` : ''
+	const { class: input_class_name, ...rest_props } = $$restProps
+	const class_name = [ input_class_name || '', 'row' ].join(' ')
 </script>
 
-<Container
+<Layout
 	bind:ref
-	{ ...$$restProps }
-	class="{ row } { $$props.class || '' }"
-	style='
-		{ style };
-		{ justify_content_style }
-		{ align_items_style }
-	'
-	spacing_x={ spacing }
+	{ ...rest_props }
+	class={ class_name }
+	layout_class={ layout_x }
+	layout_style={ layout_x_style }
 >
 	<slot/>
-</Container>
+</Layout>

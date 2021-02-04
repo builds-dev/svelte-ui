@@ -21,3 +21,12 @@
 		<Box height={px(content_height)}/>
 	</Row>
 </Viewport>
+
+<Viewport>
+	<Row>
+		<Row width={fill} height={500} style='background: orange;'>
+			<Box bind:ref={child} height={50} center_x center_y style='background: lightblue;'/>
+			<Box height={px(content_height)}/>
+		</Row>
+	</Row>
+</Viewport>
