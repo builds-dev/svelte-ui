@@ -1,9 +1,8 @@
 <script>
 	import { css } from '@linaria/core'
+	import Element from './Element.svelte'
+	import { layout, layout_x, layout_style, layout_x_style } from './layout'
 	import { nearby } from './nearby'
-	import Row from './Row.svelte'
-
-	export let ref = undefined
 
 	const box = css`
 		& > :not(${nearby}) ~ :not(${nearby}) {
@@ -24,18 +23,16 @@
 			}
 		}
 	`
+	export let ref = undefined
+	export let style = ''
+	const className = [ $$props.class || '', box, layout_x, layout ].join(' ')
 </script>
 
-<Row
+<Element
 	bind:ref
 	{ ...$$restProps }
-	class="{ box } { $$props.class || '' }"
+	class={ className }
+	style="{ layout_style($$props) }{ layout_x_style($$props) }{ style }"
 >
-	<slot name='in_back' slot='in_back'/>
 	<slot/>
-	<slot name='above' slot='above'/>
-	<slot name='below' slot='below'/>
-	<slot name='on_left' slot='on_left'/>
-	<slot name='on_right' slot='on_right'/>
-	<slot name='in_front' slot='in_front'/>
-</Row>
+</Element>

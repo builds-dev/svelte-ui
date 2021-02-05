@@ -1,7 +1,7 @@
 <script>
 	import * as assert from 'uvu/assert'
 	import { onMount } from 'svelte'
-	import { Box, Column, Viewport, px } from '../../src/index'
+	import { Box, Column } from '../../src/index'
 	import { rendered_px_equal } from '../util'
 
 	let column
@@ -27,9 +27,7 @@
 	})
 </script>
 
-<Viewport>
-	<Column bind:ref={column} center_y>
-		<Box bind:ref={content_1} height={px(content_height)}/>
-		<Box bind:ref={content_2} height={px(content_height)}/>
-	</Column>
-</Viewport>
+<Column bind:ref={column} center_y>
+	<Box bind:ref={content_1} height={content_height}/>
+	<Box bind:ref={content_2} height={content_height}/>
+</Column>

@@ -1,7 +1,7 @@
 <script>
 	import * as assert from 'uvu/assert'
 	import { onMount } from 'svelte'
-	import { Box, Row, Viewport, fill, px } from '../../src/index'
+	import { Box, Row, fill } from '../../src/index'
 
 	let child
 	let content_height = 50
@@ -15,9 +15,7 @@
 	})
 </script>
 
-<Viewport>
-	<Row>
-		<Box bind:ref={child} height={fill}/>
-		<Box height={px(content_height)}/>
-	</Row>
-</Viewport>
+<Row width={fill} style='background: orange;'>
+	<Box bind:ref={child} height={fill} width={fill} style='background: lightblue;'/>
+	<Box height={content_height} width={fill} style='background: lightgreen;'/>
+</Row>

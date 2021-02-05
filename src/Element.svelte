@@ -1,43 +1,22 @@
 <script>
-	import Spacing_Context, { get_spacing_context } from './Spacing_Context.svelte'
-	import { reset } from './reset'
-	import { element } from './element'
-	import { content, length_css } from './length'
-
-	const context_spacing = get_spacing_context()
+	import Spacing_context, { get_spacing_context } from './Spacing_context.svelte'
+	import { element, element_style } from './element'
+	import { content, format_length } from './length'
 
 	export let ref = undefined
-
-	export let width = content
-	export let height = content
-	export let x = 0
-	export let y = 0
-	export let padding = 0
-	export let opacity = 1
 	export let style = ''
-	$: padding_value = Array.isArray(padding)
-		? padding.map(n => `${n}px`).join(' ')
-		: `${padding}px`
+	const className = [ $$props.class || '', element ].join(' ')
+	const { context_spacing_x, context_spacing_y } = get_spacing_context()
 </script>
 
 <div
 	bind:this={ ref }
-	{ ...$$restProps }
-	class="{ reset } { element } { $$props.class || '' }"
-	data-height-base={ height.base.type }
-	data-width-base={ width.base.type }
-	style="
-		{ style };
-		{ length_css('height', height) };
-		{ length_css('width', width) };
-		--context-spacing-x: { context_spacing.x }px;
-		--context-spacing-y: { context_spacing.y }px;
-		padding: { padding_value };
-		opacity: { opacity };
-		{ x || y ? `transform: translate3d(${ x }px, ${ y }px, 0);` : '' }
-	"
+	class={ className }
+	data-height-base={ format_length($$props.height || content).base.type }
+	data-width-base={ format_length($$props.width || content).base.type }
+	style="{ element_style($$props, $context_spacing_x, $context_spacing_y) }{ style }"
 >
-	<Spacing_Context x={0} y={0}>
+	<Spacing_context x={0} y={0}>
 		<slot/>
-	</Spacing_Context>
+	</Spacing_context>
 </div>

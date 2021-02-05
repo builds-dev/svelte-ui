@@ -4,6 +4,12 @@ export { default as Column } from './Column.svelte'
 export { default as Image } from './Image.svelte'
 // export { default as Paragraph } from './Paragraph.svelte'
 export { default as Row } from './Row.svelte'
-export { default as Viewport } from './Viewport.svelte'
+
+export { default as Above } from './Above.svelte'
+export { default as Below } from './Below.svelte'
+export { default as On_left } from './On_left.svelte'
+export { default as On_right } from './On_right.svelte'
+export { default as In_back } from './In_back.svelte'
+export { default as In_front } from './In_front.svelte'
 
 export * from './length.js'
