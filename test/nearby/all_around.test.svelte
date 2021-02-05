@@ -1,7 +1,7 @@
 <script>
 	import * as assert from 'uvu/assert'
 	import { onMount } from 'svelte'
-	import { Above, Below, On_left, On_right, In_front, In_back, Box, Column, Row, Image, Viewport, fill, px } from '../../src/index'
+	import { Above, Below, On_left, On_right, In_front, In_back, Box, Image, fill, px } from '../../src/index'
 
 	let content
 	let in_back
@@ -53,37 +53,35 @@
 	})
 </script>
 
-<Viewport>
-	<Column height={fill} width={fill} center_x center_y>
-		<Box>
-			<In_back>
-				<Box bind:ref={in_back} height={fill} width={fill} center_y padding={10}>back</Box>
-			</In_back>
-			<Box bind:ref={content} height={px(100)} width={px(100)} center_x center_y padding={20}>
-				<Image
-					opacity={1}
-					src='https://svelte.dev/svelte-logo-horizontal.svg'
-					origin_x={0}
-					origin_y={0}
-					height={fill}
-					width={fill}
-				/>
-			</Box>
-			<In_front>
-				<Box bind:ref={in_front} height={fill} width={fill} center_y align_right padding={10} style="background: rgba(255, 62, 0, 0.4)">front</Box>
-			</In_front>
-			<Above>
-				<Box bind:ref={above} width={fill} center_x>above</Box>
-			</Above>
-			<Below>
-				<Box bind:ref={below} width={fill} center_x>below</Box>
-			</Below>
-			<On_left>
-				<Box bind:ref={on_left} height={fill} center_y>on left</Box>
-			</On_left>
-			<On_right>
-				<Box bind:ref={on_right} height={fill} center_y>on right</Box>
-			</On_right>
+<Box height={fill} width={fill} center_x center_y>
+	<Box>
+		<In_back>
+			<Box bind:ref={in_back} height={fill} width={fill} center_y padding={10}>back</Box>
+		</In_back>
+		<Box bind:ref={content} height={px(100)} width={px(100)} center_x center_y padding={20}>
+			<Image
+				opacity={1}
+				src='https://svelte.dev/svelte-logo-horizontal.svg'
+				origin_x={0}
+				origin_y={0}
+				height={fill}
+				width={fill}
+			/>
 		</Box>
-	</Column>
-</Viewport>
+		<In_front>
+			<Box bind:ref={in_front} height={fill} width={fill} center_y align_right padding={10} style="background: rgba(255, 62, 0, 0.4)">front</Box>
+		</In_front>
+		<Above>
+			<Box bind:ref={above} width={fill} center_x>above</Box>
+		</Above>
+		<Below>
+			<Box bind:ref={below} width={fill} center_x>below</Box>
+		</Below>
+		<On_left>
+			<Box bind:ref={on_left} height={fill} center_y>on left</Box>
+		</On_left>
+		<On_right>
+			<Box bind:ref={on_right} height={fill} center_y>on right</Box>
+		</On_right>
+	</Box>
+</Box>

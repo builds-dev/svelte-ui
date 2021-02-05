@@ -21,8 +21,12 @@ const overflow_style = (axis, clip, scroll) => clip || scroll
 	: ''
 
 // dynamic styles
-export const layout_style = ({ clip_x, clip_y, scroll_x, scroll_y }) =>
-	`${overflow_style('x', clip_x, scroll_x)}${overflow_style('y', clip_y, scroll_y)}`
+export const layout_style = ({ clip_x, clip_y, scroll_x, scroll_y, wrap }) =>
+	[
+		overflow_style('x', clip_x, scroll_x),
+		overflow_style('y', clip_y, scroll_y),
+		wrap ? 'flex-wrap: wrap;' : ''
+	].join(' ')
 
 // static styles for x layout
 export const layout_x = css`
@@ -83,3 +87,9 @@ export const layout_y_style = ({ align_bottom, center_y, align_right, center_x }
 		align_bottom || center_y ? `justify-content: ${ align_bottom ? 'flex-end' : 'center' };` : '',
 		align_right || center_x ? `align-items: ${ align_right ? 'flex-end' : 'center' };` : ''
 	].join('')
+
+// dynamic styles for layout with spacing
+export const spacing_context = ({ x, y }) => [
+		y ? `margin-top: -${ y }px;` : '',
+		x ? `margin-left: -${ x }px;` : '',
+].join('')

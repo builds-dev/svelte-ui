@@ -1,6 +1,7 @@
 import { suite } from 'uvu'
 import * as assert from 'uvu/assert'
 import tests from '../build/test-components'
+import { layout, layout_y } from '../src/layout'
 
 const keep_alive = !navigator.userAgent.toLowerCase().includes('electron')
 
@@ -18,6 +19,13 @@ const suites = tests
 		},
 		{}
 	)
+
+document.body.className = `${layout} ${layout_y}`
+Object.assign(document.body.style, {
+	margin: 0,
+	padding: 0,
+	minHeight: '100%'
+})
 
 Object.entries(suites)
 	.forEach(([ suite_name, tests ]) => {
