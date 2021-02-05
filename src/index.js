@@ -4,7 +4,6 @@ export { default as Column } from './Column.svelte'
 export { default as Image } from './Image.svelte'
 // export { default as Paragraph } from './Paragraph.svelte'
 export { default as Row } from './Row.svelte'
-export { default as Viewport } from './Viewport.svelte'
 
 export { default as Above } from './Above.svelte'
 export { default as Below } from './Below.svelte'
