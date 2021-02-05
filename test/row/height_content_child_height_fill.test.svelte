@@ -15,7 +15,7 @@
 	})
 </script>
 
-<Row>
-	<Box bind:ref={child} height={fill}/>
-	<Box height={content_height}/>
+<Row width={fill} style='background: orange;'>
+	<Box bind:ref={child} height={fill} width={fill} style='background: lightblue;'/>
+	<Box height={content_height} width={fill} style='background: lightgreen;'/>
 </Row>
