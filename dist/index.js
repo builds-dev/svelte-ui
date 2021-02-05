@@ -27,6 +27,16 @@ function safe_not_equal(a, b) {
 function is_empty(obj) {
     return Object.keys(obj).length === 0;
 }
+function subscribe(store, ...callbacks) {
+    if (store == null) {
+        return noop;
+    }
+    const unsub = store.subscribe(...callbacks);
+    return unsub.unsubscribe ? () => unsub.unsubscribe() : unsub;
+}
+function component_subscribe(component, store, callback) {
+    component.$$.on_destroy.push(subscribe(store, callback));
+}
 function create_slot(definition, ctx, $$scope, fn) {
     if (definition) {
         const slot_ctx = get_slot_context(definition, ctx, $$scope, fn);
@@ -78,19 +88,6 @@ function compute_rest_props(props, keys) {
             rest[k] = props[k];
     return rest;
 }
-function compute_slots(slots) {
-    const result = {};
-    for (const key in slots) {
-        result[key] = true;
-    }
-    return result;
-}
-function null_to_empty(value) {
-    return value == null ? '' : value;
-}
-function action_destroyer(action_result) {
-    return action_result && is_function(action_result.destroy) ? action_result.destroy : noop;
-}
 
 function append(target, node) {
     target.appendChild(node);
@@ -107,41 +104,11 @@ function element(name) {
 function svg_element(name) {
     return document.createElementNS('http://www.w3.org/2000/svg', name);
 }
-function text(data) {
-    return document.createTextNode(data);
-}
-function space() {
-    return text(' ');
-}
-function empty() {
-    return text('');
-}
 function attr(node, attribute, value) {
     if (value == null)
         node.removeAttribute(attribute);
     else if (node.getAttribute(attribute) !== value)
         node.setAttribute(attribute, value);
-}
-function set_attributes(node, attributes) {
-    // @ts-ignore
-    const descriptors = Object.getOwnPropertyDescriptors(node.__proto__);
-    for (const key in attributes) {
-        if (attributes[key] == null) {
-            node.removeAttribute(key);
-        }
-        else if (key === 'style') {
-            node.style.cssText = attributes[key];
-        }
-        else if (key === '__value') {
-            node.value = node[key] = attributes[key];
-        }
-        else if (descriptors[key] && descriptors[key].set) {
-            node[key] = attributes[key];
-        }
-        else {
-            attr(node, key, attributes[key]);
-        }
-    }
 }
 function children(element) {
     return Array.from(element.childNodes);
@@ -165,19 +132,6 @@ function claim_element(nodes, name, attributes, svg) {
         }
     }
     return svg ? svg_element(name) : element(name);
-}
-function claim_text(nodes, data) {
-    for (let i = 0; i < nodes.length; i += 1) {
-        const node = nodes[i];
-        if (node.nodeType === 3) {
-            node.data = '' + data;
-            return nodes.splice(i, 1)[0];
-        }
-    }
-    return text(data);
-}
-function claim_space(nodes) {
-    return claim_text(nodes, ' ');
 }
 function set_style(node, key, value, important) {
     node.style.setProperty(key, value, important ? 'important' : '');
@@ -267,19 +221,6 @@ function update($$) {
 }
 const outroing = new Set();
 let outros;
-function group_outros() {
-    outros = {
-        r: 0,
-        c: [],
-        p: outros // parent group
-    };
-}
-function check_outros() {
-    if (!outros.r) {
-        run_all(outros.c);
-    }
-    outros = outros.p;
-}
 function transition_in(block, local) {
     if (block && block.i) {
         outroing.delete(block);
@@ -475,52 +416,59 @@ class SvelteComponent {
     }
 }
 
-function styleInject(css, ref) {
-  if ( ref === void 0 ) ref = {};
-  var insertAt = ref.insertAt;
-
-  if (!css || typeof document === 'undefined') { return; }
-
-  var head = document.head || document.getElementsByTagName('head')[0];
-  var style = document.createElement('style');
-  style.type = 'text/css';
-
-  if (insertAt === 'top') {
-    if (head.firstChild) {
-      head.insertBefore(style, head.firstChild);
-    } else {
-      head.appendChild(style);
+const subscriber_queue = [];
+/**
+ * Create a `Writable` store that allows both updating and reading by subscription.
+ * @param {*=}value initial value
+ * @param {StartStopNotifier=}start start and stop notifications for subscriptions
+ */
+function writable(value, start = noop) {
+    let stop;
+    const subscribers = [];
+    function set(new_value) {
+        if (safe_not_equal(value, new_value)) {
+            value = new_value;
+            if (stop) { // store is ready
+                const run_queue = !subscriber_queue.length;
+                for (let i = 0; i < subscribers.length; i += 1) {
+                    const s = subscribers[i];
+                    s[1]();
+                    subscriber_queue.push(s, value);
+                }
+                if (run_queue) {
+                    for (let i = 0; i < subscriber_queue.length; i += 2) {
+                        subscriber_queue[i][0](subscriber_queue[i + 1]);
+                    }
+                    subscriber_queue.length = 0;
+                }
+            }
+        }
     }
-  } else {
-    head.appendChild(style);
-  }
-
-  if (style.styleSheet) {
-    style.styleSheet.cssText = css;
-  } else {
-    style.appendChild(document.createTextNode(css));
-  }
+    function update(fn) {
+        set(fn(value));
+    }
+    function subscribe(run, invalidate = noop) {
+        const subscriber = [run, invalidate];
+        subscribers.push(subscriber);
+        if (subscribers.length === 1) {
+            stop = start(set) || noop;
+        }
+        run(value);
+        return () => {
+            const index = subscribers.indexOf(subscriber);
+            if (index !== -1) {
+                subscribers.splice(index, 1);
+            }
+            if (subscribers.length === 0) {
+                stop();
+                stop = null;
+            }
+        };
+    }
+    return { set, update, subscribe };
 }
 
-var css_248z = ".element_ekolm46[data-height-base=px]{height:var(--height-base-value);}.element_ekolm46[data-width-base=px]{width:var(--width-base-value);}.element_ekolm46:not(:first-child){margin-top:var(--context-spacing-y);margin-left:var(--context-spacing-x);}\n";
-styleInject(css_248z);
-
-const element$1 = "element_ekolm46";
-
-var css_248z$1 = ".nearby_n1ymrolb{position:static;margin:0;pointer-events:none;}\n.nearby_container_nc97fwj{position:absolute !important;pointer-events:auto !important;z-index:1;}\n.nearby_x_n1dmxc9z{top:0;height:100%;-webkit-align-items:flex-start;-webkit-box-align:flex-start;-ms-flex-align:flex-start;align-items:flex-start;}.nearby_x_n1dmxc9z > .element_ekolm46[data-height-base=fill]{height:100%;}\n.nearby_y_n91qj6k{left:0;width:100%;}.nearby_y_n91qj6k > .element_ekolm46[data-width-base=fill]{width:100%;}\n.in_back_i1ulrqav{z-index:0;}\n.on_left_o1xlmqx2{right:100%;-webkit-box-pack:end;-webkit-justify-content:flex-end;-ms-flex-pack:end;justify-content:flex-end;}\n.on_right_okq8kx3{left:100%;}\n.above_a105wjvu{bottom:100%;}\n.below_byr7vx7{top:100%;}\n";
-styleInject(css_248z$1);
-
-const nearby = "nearby_n1ymrolb";
-const nearby_container = "nearby_container_nc97fwj";
-const nearby_x = "nearby_x_n1dmxc9z";
-const nearby_y = "nearby_y_n91qj6k";
-const in_back = "in_back_i1ulrqav";
-const on_left = "on_left_o1xlmqx2";
-const on_right = "on_right_okq8kx3";
-const above = "above_a105wjvu";
-const below = "below_byr7vx7";
-
-/* src/Spacing_Context.svelte generated by Svelte v3.32.0 */
+/* src/Spacing_context.svelte generated by Svelte v3.32.0 */
 
 function create_fragment(ctx) {
 	let current;
@@ -564,14 +512,21 @@ function create_fragment(ctx) {
 }
 
 const CONTEXT_KEY = Symbol();
-const get_spacing_context = () => getContext(CONTEXT_KEY) || { x: 0, y: 0 };
+
+const get_spacing_context = () => getContext(CONTEXT_KEY) || {
+	context_spacing_x: writable(0),
+	context_spacing_y: writable(0)
+};
+
 const set_spacing_context = value => setContext(CONTEXT_KEY, value);
 
 function instance($$self, $$props, $$invalidate) {
 	let { $$slots: slots = {}, $$scope } = $$props;
-	let { x = 0 } = $$props;
-	let { y = 0 } = $$props;
-	set_spacing_context({ x, y });
+	let { x = null } = $$props;
+	let { y = null } = $$props;
+	const context_spacing_x = writable(x);
+	const context_spacing_y = writable(y);
+	set_spacing_context({ context_spacing_x, context_spacing_y });
 
 	$$self.$$set = $$props => {
 		if ("x" in $$props) $$invalidate(0, x = $$props.x);
@@ -579,20 +534,25 @@ function instance($$self, $$props, $$invalidate) {
 		if ("$$scope" in $$props) $$invalidate(2, $$scope = $$props.$$scope);
 	};
 
+	$$self.$$.update = () => {
+		if ($$self.$$.dirty & /*x*/ 1) {
+			 context_spacing_x.set(x);
+		}
+
+		if ($$self.$$.dirty & /*y*/ 2) {
+			 context_spacing_y.set(y);
+		}
+	};
+
 	return [x, y, $$scope, slots];
 }
 
-class Spacing_Context extends SvelteComponent {
+class Spacing_context extends SvelteComponent {
 	constructor(options) {
 		super();
 		init(this, options, instance, create_fragment, safe_not_equal, { x: 0, y: 1 });
 	}
 }
-
-var css_248z$2 = ".reset_rcbd2q{-webkit-align-self:auto;-ms-flex-item-align:auto;align-self:auto;border-color:#000000;border-style:solid;border-width:0;box-sizing:border-box;color:inherit;display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-basis:auto;-ms-flex-preferred-size:auto;flex-basis:auto;-webkit-flex-direction:row;-ms-flex-direction:row;flex-direction:row;-webkit-flex-shrink:0;-ms-flex-negative:0;flex-shrink:0;-webkit-flex-wrap:nowrap;-ms-flex-wrap:nowrap;flex-wrap:nowrap;font-family:inherit;font-size:inherit;font-style:inherit;font-weight:inherit;line-height:1;margin:0;opacity:1;padding:0;position:relative;resize:none;-webkit-text-decoration:none;text-decoration:none;}\n";
-styleInject(css_248z$2);
-
-const reset = "reset_rcbd2q";
 
 const length_defaults = { min: 0, max: Infinity };
 
@@ -603,23 +563,73 @@ const content = { base: { type: 'content' }, ...length_defaults };
 
 const px = value => ({ base: { type: 'px', value }, ...length_defaults });
 
-const min = value => length => ({ ...length, min: value });
+const min = value => length => ({ ...format_length(length), min: value });
 
-const max = value => length => ({ ...length, max: value });
+const max = value => length => ({ ...format_length(length), max: value });
 
-const length_css = (property, { base, min, max }) =>
-	`
-		--${property}-base-value: ${ base.value || 0 }${ base.type === 'px' ? 'px' : '' };
-		min-${property}: ${ min }px;
-		max-${property}: ${ max === Infinity ? 'none' : `${ max }px` };
-	`;
+const format_length = length => typeof length === 'number' ? px(length) : length;
+
+const length_css = (property, length) => {
+	const { base, min, max } = format_length(length);
+	return [
+		`--${property}-base-value: ${ base.value || 0 }${ base.type === 'px' ? 'px' : '' };`,
+		min ? `min-${property}: ${ min }px;` : '',
+		max == null || max === Infinity ? '' : `max-${property}: ${ max }px;`
+	].join(' ')
+};
+
+function styleInject(css, ref) {
+  if ( ref === void 0 ) ref = {};
+  var insertAt = ref.insertAt;
+
+  if (!css || typeof document === 'undefined') { return; }
+
+  var head = document.head || document.getElementsByTagName('head')[0];
+  var style = document.createElement('style');
+  style.type = 'text/css';
+
+  if (insertAt === 'top') {
+    if (head.firstChild) {
+      head.insertBefore(style, head.firstChild);
+    } else {
+      head.appendChild(style);
+    }
+  } else {
+    head.appendChild(style);
+  }
+
+  if (style.styleSheet) {
+    style.styleSheet.cssText = css;
+  } else {
+    style.appendChild(document.createTextNode(css));
+  }
+}
+
+var css_248z = ".element_ekolm46{-webkit-flex-basis:auto;-ms-flex-preferred-size:auto;flex-basis:auto;-webkit-flex-shrink:0;-ms-flex-negative:0;flex-shrink:0;position:relative;box-sizing:border-box;height:auto;width:auto;}.element_ekolm46[data-height-base=px]{height:var(--height-base-value);}.element_ekolm46[data-width-base=px]{width:var(--width-base-value);}\n";
+styleInject(css_248z);
+
+/*
+ * styles necessary for a dom node child of a layout container
+ */
+// static styles
+
+const element$1 = "element_ekolm46"; // dynamic styles
+
+const element_style = ({
+  height = content,
+  width = content,
+  padding,
+  opacity,
+  x,
+  y
+}, context_spacing_x, context_spacing_y) => [length_css('height', height), length_css('width', width), context_spacing_y ? `margin-top: ${context_spacing_y}px;` : '', context_spacing_x ? `margin-left: ${context_spacing_x}px;` : '', opacity == null ? '' : `opacity: ${opacity};`, padding == null ? '' : `padding: ${Array.isArray(padding) ? padding.map(n => `${n}px`).join(' ') : `${padding}px`};`, x || y ? `transform: translate3d(${x}px, ${y}px, 0);` : ''].join('');
 
 /* src/Element.svelte generated by Svelte v3.32.0 */
 
 function create_default_slot(ctx) {
 	let current;
-	const default_slot_template = /*#slots*/ ctx[12].default;
-	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[14], null);
+	const default_slot_template = /*#slots*/ ctx[8].default;
+	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[10], null);
 
 	return {
 		c() {
@@ -637,8 +647,8 @@ function create_default_slot(ctx) {
 		},
 		p(ctx, dirty) {
 			if (default_slot) {
-				if (default_slot.p && dirty & /*$$scope*/ 16384) {
-					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[14], dirty, null, null);
+				if (default_slot.p && dirty & /*$$scope*/ 1024) {
+					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[10], dirty, null, null);
 				}
 			}
 		},
@@ -660,13 +670,12 @@ function create_default_slot(ctx) {
 function create_fragment$1(ctx) {
 	let div;
 	let spacing_context;
-	let div_class_value;
 	let div_data_height_base_value;
 	let div_data_width_base_value;
 	let div_style_value;
 	let current;
 
-	spacing_context = new Spacing_Context({
+	spacing_context = new Spacing_context({
 			props: {
 				x: 0,
 				y: 0,
@@ -674,30 +683,6 @@ function create_fragment$1(ctx) {
 				$$scope: { ctx }
 			}
 		});
-
-	let div_levels = [
-		/*$$restProps*/ ctx[9],
-		{
-			class: div_class_value = "" + (reset + " " + element$1 + " " + (/*$$props*/ ctx[10].class || ""))
-		},
-		{
-			"data-height-base": div_data_height_base_value = /*height*/ ctx[2].base.type
-		},
-		{
-			"data-width-base": div_data_width_base_value = /*width*/ ctx[1].base.type
-		},
-		{
-			style: div_style_value = "\n\t\t" + /*style*/ ctx[6] + ";\n\t\t" + length_css("height", /*height*/ ctx[2]) + ";\n\t\t" + length_css("width", /*width*/ ctx[1]) + ";\n\t\t--context-spacing-x: " + /*context_spacing*/ ctx[8].x + "px;\n\t\t--context-spacing-y: " + /*context_spacing*/ ctx[8].y + "px;\n\t\tpadding: " + /*padding_value*/ ctx[7] + ";\n\t\topacity: " + /*opacity*/ ctx[5] + ";\n\t\t" + (/*x*/ ctx[3] || /*y*/ ctx[4]
-			? `transform: translate3d(${/*x*/ ctx[3]}px, ${/*y*/ ctx[4]}px, 0);`
-			: "") + "\n\t"
-		}
-	];
-
-	let div_data = {};
-
-	for (let i = 0; i < div_levels.length; i += 1) {
-		div_data = assign(div_data, div_levels[i]);
-	}
 
 	return {
 		c() {
@@ -719,36 +704,37 @@ function create_fragment$1(ctx) {
 			this.h();
 		},
 		h() {
-			set_attributes(div, div_data);
+			attr(div, "class", /*className*/ ctx[4]);
+			attr(div, "data-height-base", div_data_height_base_value = format_length(/*$$props*/ ctx[7].height || content).base.type);
+			attr(div, "data-width-base", div_data_width_base_value = format_length(/*$$props*/ ctx[7].width || content).base.type);
+			attr(div, "style", div_style_value = "" + (element_style(/*$$props*/ ctx[7], /*$context_spacing_x*/ ctx[2], /*$context_spacing_y*/ ctx[3]) + /*style*/ ctx[1]));
 		},
 		m(target, anchor) {
 			insert(target, div, anchor);
 			mount_component(spacing_context, div, null);
-			/*div_binding*/ ctx[13](div);
+			/*div_binding*/ ctx[9](div);
 			current = true;
 		},
 		p(ctx, [dirty]) {
 			const spacing_context_changes = {};
 
-			if (dirty & /*$$scope*/ 16384) {
+			if (dirty & /*$$scope*/ 1024) {
 				spacing_context_changes.$$scope = { dirty, ctx };
 			}
 
 			spacing_context.$set(spacing_context_changes);
 
-			set_attributes(div, div_data = get_spread_update(div_levels, [
-				dirty & /*$$restProps*/ 512 && /*$$restProps*/ ctx[9],
-				(!current || dirty & /*$$props*/ 1024 && div_class_value !== (div_class_value = "" + (reset + " " + element$1 + " " + (/*$$props*/ ctx[10].class || "")))) && { class: div_class_value },
-				(!current || dirty & /*height*/ 4 && div_data_height_base_value !== (div_data_height_base_value = /*height*/ ctx[2].base.type)) && {
-					"data-height-base": div_data_height_base_value
-				},
-				(!current || dirty & /*width*/ 2 && div_data_width_base_value !== (div_data_width_base_value = /*width*/ ctx[1].base.type)) && {
-					"data-width-base": div_data_width_base_value
-				},
-				(!current || dirty & /*style, height, width, padding_value, opacity, x, y*/ 254 && div_style_value !== (div_style_value = "\n\t\t" + /*style*/ ctx[6] + ";\n\t\t" + length_css("height", /*height*/ ctx[2]) + ";\n\t\t" + length_css("width", /*width*/ ctx[1]) + ";\n\t\t--context-spacing-x: " + /*context_spacing*/ ctx[8].x + "px;\n\t\t--context-spacing-y: " + /*context_spacing*/ ctx[8].y + "px;\n\t\tpadding: " + /*padding_value*/ ctx[7] + ";\n\t\topacity: " + /*opacity*/ ctx[5] + ";\n\t\t" + (/*x*/ ctx[3] || /*y*/ ctx[4]
-				? `transform: translate3d(${/*x*/ ctx[3]}px, ${/*y*/ ctx[4]}px, 0);`
-				: "") + "\n\t")) && { style: div_style_value }
-			]));
+			if (!current || dirty & /*$$props*/ 128 && div_data_height_base_value !== (div_data_height_base_value = format_length(/*$$props*/ ctx[7].height || content).base.type)) {
+				attr(div, "data-height-base", div_data_height_base_value);
+			}
+
+			if (!current || dirty & /*$$props*/ 128 && div_data_width_base_value !== (div_data_width_base_value = format_length(/*$$props*/ ctx[7].width || content).base.type)) {
+				attr(div, "data-width-base", div_data_width_base_value);
+			}
+
+			if (!current || dirty & /*$$props, $context_spacing_x, $context_spacing_y, style*/ 142 && div_style_value !== (div_style_value = "" + (element_style(/*$$props*/ ctx[7], /*$context_spacing_x*/ ctx[2], /*$context_spacing_y*/ ctx[3]) + /*style*/ ctx[1]))) {
+				attr(div, "style", div_style_value);
+			}
 		},
 		i(local) {
 			if (current) return;
@@ -762,25 +748,21 @@ function create_fragment$1(ctx) {
 		d(detaching) {
 			if (detaching) detach(div);
 			destroy_component(spacing_context);
-			/*div_binding*/ ctx[13](null);
+			/*div_binding*/ ctx[9](null);
 		}
 	};
 }
 
 function instance$1($$self, $$props, $$invalidate) {
-	let padding_value;
-	const omit_props_names = ["ref","width","height","x","y","padding","opacity","style"];
-	let $$restProps = compute_rest_props($$props, omit_props_names);
+	let $context_spacing_x;
+	let $context_spacing_y;
 	let { $$slots: slots = {}, $$scope } = $$props;
-	const context_spacing = get_spacing_context();
 	let { ref = undefined } = $$props;
-	let { width = content } = $$props;
-	let { height = content } = $$props;
-	let { x = 0 } = $$props;
-	let { y = 0 } = $$props;
-	let { padding = 0 } = $$props;
-	let { opacity = 1 } = $$props;
 	let { style = "" } = $$props;
+	const className = [$$props.class || "", element$1].join(" ");
+	const { context_spacing_x, context_spacing_y } = get_spacing_context();
+	component_subscribe($$self, context_spacing_x, value => $$invalidate(2, $context_spacing_x = value));
+	component_subscribe($$self, context_spacing_y, value => $$invalidate(3, $context_spacing_y = value));
 
 	function div_binding($$value) {
 		binding_callbacks[$$value ? "unshift" : "push"](() => {
@@ -790,42 +772,23 @@ function instance$1($$self, $$props, $$invalidate) {
 	}
 
 	$$self.$$set = $$new_props => {
-		$$invalidate(10, $$props = assign(assign({}, $$props), exclude_internal_props($$new_props)));
-		$$invalidate(9, $$restProps = compute_rest_props($$props, omit_props_names));
+		$$invalidate(7, $$props = assign(assign({}, $$props), exclude_internal_props($$new_props)));
 		if ("ref" in $$new_props) $$invalidate(0, ref = $$new_props.ref);
-		if ("width" in $$new_props) $$invalidate(1, width = $$new_props.width);
-		if ("height" in $$new_props) $$invalidate(2, height = $$new_props.height);
-		if ("x" in $$new_props) $$invalidate(3, x = $$new_props.x);
-		if ("y" in $$new_props) $$invalidate(4, y = $$new_props.y);
-		if ("padding" in $$new_props) $$invalidate(11, padding = $$new_props.padding);
-		if ("opacity" in $$new_props) $$invalidate(5, opacity = $$new_props.opacity);
-		if ("style" in $$new_props) $$invalidate(6, style = $$new_props.style);
-		if ("$$scope" in $$new_props) $$invalidate(14, $$scope = $$new_props.$$scope);
-	};
-
-	$$self.$$.update = () => {
-		if ($$self.$$.dirty & /*padding*/ 2048) {
-			 $$invalidate(7, padding_value = Array.isArray(padding)
-			? padding.map(n => `${n}px`).join(" ")
-			: `${padding}px`);
-		}
+		if ("style" in $$new_props) $$invalidate(1, style = $$new_props.style);
+		if ("$$scope" in $$new_props) $$invalidate(10, $$scope = $$new_props.$$scope);
 	};
 
 	$$props = exclude_internal_props($$props);
 
 	return [
 		ref,
-		width,
-		height,
-		x,
-		y,
-		opacity,
 		style,
-		padding_value,
-		context_spacing,
-		$$restProps,
+		$context_spacing_x,
+		$context_spacing_y,
+		className,
+		context_spacing_x,
+		context_spacing_y,
 		$$props,
-		padding,
 		slots,
 		div_binding,
 		$$scope
@@ -835,938 +798,82 @@ function instance$1($$self, $$props, $$invalidate) {
 class Element extends SvelteComponent {
 	constructor(options) {
 		super();
-
-		init(this, options, instance$1, create_fragment$1, safe_not_equal, {
-			ref: 0,
-			width: 1,
-			height: 2,
-			x: 3,
-			y: 4,
-			padding: 11,
-			opacity: 5,
-			style: 6
-		});
+		init(this, options, instance$1, create_fragment$1, safe_not_equal, { ref: 0, style: 1 });
 	}
 }
 
-/* src/Nearby.svelte generated by Svelte v3.32.0 */
-
-function add_css() {
-	var style = element("style");
-	style.id = "svelte-1eyaf3i-style";
-	style.textContent = "div.svelte-1eyaf3i:empty{display:none}";
-	append(document.head, style);
-}
-
-function create_fragment$2(ctx) {
-	let div;
-	let current;
-	let mounted;
-	let dispose;
-	const default_slot_template = /*#slots*/ ctx[2].default;
-	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[1], null);
-
-	return {
-		c() {
-			div = element("div");
-			if (default_slot) default_slot.c();
-			this.h();
-		},
-		l(nodes) {
-			div = claim_element(nodes, "DIV", { class: true });
-			var div_nodes = children(div);
-			if (default_slot) default_slot.l(div_nodes);
-			div_nodes.forEach(detach);
-			this.h();
-		},
-		h() {
-			attr(div, "class", "" + (null_to_empty(nearby) + " svelte-1eyaf3i"));
-		},
-		m(target, anchor) {
-			insert(target, div, anchor);
-
-			if (default_slot) {
-				default_slot.m(div, null);
-			}
-
-			current = true;
-
-			if (!mounted) {
-				dispose = action_destroyer(/*action*/ ctx[0].call(null, div));
-				mounted = true;
-			}
-		},
-		p(ctx, [dirty]) {
-			if (default_slot) {
-				if (default_slot.p && dirty & /*$$scope*/ 2) {
-					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[1], dirty, null, null);
-				}
-			}
-		},
-		i(local) {
-			if (current) return;
-			transition_in(default_slot, local);
-			current = true;
-		},
-		o(local) {
-			transition_out(default_slot, local);
-			current = false;
-		},
-		d(detaching) {
-			if (detaching) detach(div);
-			if (default_slot) default_slot.d(detaching);
-			mounted = false;
-			dispose();
-		}
-	};
-}
-
-function instance$2($$self, $$props, $$invalidate) {
-	let { $$slots: slots = {}, $$scope } = $$props;
-	const class_name = `${reset} ${nearby_container} ${$$props.class || ""}`;
-
-	/*
-	A. working around svelte awkwardness
-		1. using the i.e. <div slot='above'> element as the nearby_container
-			Because slots are needed to control the order the nearby elements end up in the dom, for the sake of layering order consistency
-			and the slot attribute is not currently supported on custom components
-				<Box slot='above'> <!-- not supported -->
-			so we must pass the slot content in a dom node
-			and that additional dom node is in the way of the nearby container styling
-			putting display: contents; on it via something like `> [slot]` solves the styling issue in a sense...
-			but also breaks child selectors expecting the slot content to be a direct child of nearby_container
-			whereas that child would then be the `<div slot='above'>` node instead.
-	
-		2. removing the dom node of this component if it has no children, meaning no slot content was actually passed
-			This is necessary because
-				{#if $$slots.above} <slot name='above' slot='above'/> {/if}
-			is not supported by Svelte, so components like Row pass the slot content to Container, even though they don't have anything to pass
-			this makes the `{#if $$slots.above}` checks in Container useless, so this component, Nearby, is always rendered.
-*/
-	const action = node => {
-		if (node.children.length === 0) {
-			node.parentNode.removeChild(node);
-		}
-
-		for (const child of node.children) {
-			child.className = class_name;
-		}
-	};
-
-	$$self.$$set = $$new_props => {
-		$$invalidate(4, $$props = assign(assign({}, $$props), exclude_internal_props($$new_props)));
-		if ("$$scope" in $$new_props) $$invalidate(1, $$scope = $$new_props.$$scope);
-	};
-
-	$$props = exclude_internal_props($$props);
-	return [action, $$scope, slots];
-}
-
-class Nearby extends SvelteComponent {
-	constructor(options) {
-		super();
-		if (!document.getElementById("svelte-1eyaf3i-style")) add_css();
-		init(this, options, instance$2, create_fragment$2, safe_not_equal, {});
-	}
-}
-
-/* src/Above.svelte generated by Svelte v3.32.0 */
-
-function create_default_slot$1(ctx) {
-	let current;
-	const default_slot_template = /*#slots*/ ctx[0].default;
-	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[1], null);
-
-	return {
-		c() {
-			if (default_slot) default_slot.c();
-		},
-		l(nodes) {
-			if (default_slot) default_slot.l(nodes);
-		},
-		m(target, anchor) {
-			if (default_slot) {
-				default_slot.m(target, anchor);
-			}
-
-			current = true;
-		},
-		p(ctx, dirty) {
-			if (default_slot) {
-				if (default_slot.p && dirty & /*$$scope*/ 2) {
-					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[1], dirty, null, null);
-				}
-			}
-		},
-		i(local) {
-			if (current) return;
-			transition_in(default_slot, local);
-			current = true;
-		},
-		o(local) {
-			transition_out(default_slot, local);
-			current = false;
-		},
-		d(detaching) {
-			if (default_slot) default_slot.d(detaching);
-		}
-	};
-}
-
-function create_fragment$3(ctx) {
-	let nearby;
-	let current;
-
-	nearby = new Nearby({
-			props: {
-				class: "" + (nearby_y + " " + above),
-				$$slots: { default: [create_default_slot$1] },
-				$$scope: { ctx }
-			}
-		});
-
-	return {
-		c() {
-			create_component(nearby.$$.fragment);
-		},
-		l(nodes) {
-			claim_component(nearby.$$.fragment, nodes);
-		},
-		m(target, anchor) {
-			mount_component(nearby, target, anchor);
-			current = true;
-		},
-		p(ctx, [dirty]) {
-			const nearby_changes = {};
-
-			if (dirty & /*$$scope*/ 2) {
-				nearby_changes.$$scope = { dirty, ctx };
-			}
-
-			nearby.$set(nearby_changes);
-		},
-		i(local) {
-			if (current) return;
-			transition_in(nearby.$$.fragment, local);
-			current = true;
-		},
-		o(local) {
-			transition_out(nearby.$$.fragment, local);
-			current = false;
-		},
-		d(detaching) {
-			destroy_component(nearby, detaching);
-		}
-	};
-}
-
-function instance$3($$self, $$props, $$invalidate) {
-	let { $$slots: slots = {}, $$scope } = $$props;
-
-	$$self.$$set = $$props => {
-		if ("$$scope" in $$props) $$invalidate(1, $$scope = $$props.$$scope);
-	};
-
-	return [slots, $$scope];
-}
-
-class Above extends SvelteComponent {
-	constructor(options) {
-		super();
-		init(this, options, instance$3, create_fragment$3, safe_not_equal, {});
-	}
-}
-
-/* src/Below.svelte generated by Svelte v3.32.0 */
-
-function create_default_slot$2(ctx) {
-	let current;
-	const default_slot_template = /*#slots*/ ctx[0].default;
-	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[1], null);
-
-	return {
-		c() {
-			if (default_slot) default_slot.c();
-		},
-		l(nodes) {
-			if (default_slot) default_slot.l(nodes);
-		},
-		m(target, anchor) {
-			if (default_slot) {
-				default_slot.m(target, anchor);
-			}
-
-			current = true;
-		},
-		p(ctx, dirty) {
-			if (default_slot) {
-				if (default_slot.p && dirty & /*$$scope*/ 2) {
-					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[1], dirty, null, null);
-				}
-			}
-		},
-		i(local) {
-			if (current) return;
-			transition_in(default_slot, local);
-			current = true;
-		},
-		o(local) {
-			transition_out(default_slot, local);
-			current = false;
-		},
-		d(detaching) {
-			if (default_slot) default_slot.d(detaching);
-		}
-	};
-}
-
-function create_fragment$4(ctx) {
-	let nearby;
-	let current;
-
-	nearby = new Nearby({
-			props: {
-				class: "" + (nearby_y + " " + below),
-				$$slots: { default: [create_default_slot$2] },
-				$$scope: { ctx }
-			}
-		});
-
-	return {
-		c() {
-			create_component(nearby.$$.fragment);
-		},
-		l(nodes) {
-			claim_component(nearby.$$.fragment, nodes);
-		},
-		m(target, anchor) {
-			mount_component(nearby, target, anchor);
-			current = true;
-		},
-		p(ctx, [dirty]) {
-			const nearby_changes = {};
-
-			if (dirty & /*$$scope*/ 2) {
-				nearby_changes.$$scope = { dirty, ctx };
-			}
-
-			nearby.$set(nearby_changes);
-		},
-		i(local) {
-			if (current) return;
-			transition_in(nearby.$$.fragment, local);
-			current = true;
-		},
-		o(local) {
-			transition_out(nearby.$$.fragment, local);
-			current = false;
-		},
-		d(detaching) {
-			destroy_component(nearby, detaching);
-		}
-	};
-}
-
-function instance$4($$self, $$props, $$invalidate) {
-	let { $$slots: slots = {}, $$scope } = $$props;
-
-	$$self.$$set = $$props => {
-		if ("$$scope" in $$props) $$invalidate(1, $$scope = $$props.$$scope);
-	};
-
-	return [slots, $$scope];
-}
-
-class Below extends SvelteComponent {
-	constructor(options) {
-		super();
-		init(this, options, instance$4, create_fragment$4, safe_not_equal, {});
-	}
-}
-
-/* src/On_left.svelte generated by Svelte v3.32.0 */
-
-function create_default_slot$3(ctx) {
-	let current;
-	const default_slot_template = /*#slots*/ ctx[0].default;
-	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[1], null);
-
-	return {
-		c() {
-			if (default_slot) default_slot.c();
-		},
-		l(nodes) {
-			if (default_slot) default_slot.l(nodes);
-		},
-		m(target, anchor) {
-			if (default_slot) {
-				default_slot.m(target, anchor);
-			}
-
-			current = true;
-		},
-		p(ctx, dirty) {
-			if (default_slot) {
-				if (default_slot.p && dirty & /*$$scope*/ 2) {
-					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[1], dirty, null, null);
-				}
-			}
-		},
-		i(local) {
-			if (current) return;
-			transition_in(default_slot, local);
-			current = true;
-		},
-		o(local) {
-			transition_out(default_slot, local);
-			current = false;
-		},
-		d(detaching) {
-			if (default_slot) default_slot.d(detaching);
-		}
-	};
-}
-
-function create_fragment$5(ctx) {
-	let nearby;
-	let current;
-
-	nearby = new Nearby({
-			props: {
-				class: "" + (nearby_x + " " + on_left),
-				$$slots: { default: [create_default_slot$3] },
-				$$scope: { ctx }
-			}
-		});
-
-	return {
-		c() {
-			create_component(nearby.$$.fragment);
-		},
-		l(nodes) {
-			claim_component(nearby.$$.fragment, nodes);
-		},
-		m(target, anchor) {
-			mount_component(nearby, target, anchor);
-			current = true;
-		},
-		p(ctx, [dirty]) {
-			const nearby_changes = {};
-
-			if (dirty & /*$$scope*/ 2) {
-				nearby_changes.$$scope = { dirty, ctx };
-			}
-
-			nearby.$set(nearby_changes);
-		},
-		i(local) {
-			if (current) return;
-			transition_in(nearby.$$.fragment, local);
-			current = true;
-		},
-		o(local) {
-			transition_out(nearby.$$.fragment, local);
-			current = false;
-		},
-		d(detaching) {
-			destroy_component(nearby, detaching);
-		}
-	};
-}
-
-function instance$5($$self, $$props, $$invalidate) {
-	let { $$slots: slots = {}, $$scope } = $$props;
-
-	$$self.$$set = $$props => {
-		if ("$$scope" in $$props) $$invalidate(1, $$scope = $$props.$$scope);
-	};
-
-	return [slots, $$scope];
-}
-
-class On_left extends SvelteComponent {
-	constructor(options) {
-		super();
-		init(this, options, instance$5, create_fragment$5, safe_not_equal, {});
-	}
-}
-
-/* src/On_right.svelte generated by Svelte v3.32.0 */
-
-function create_default_slot$4(ctx) {
-	let current;
-	const default_slot_template = /*#slots*/ ctx[0].default;
-	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[1], null);
-
-	return {
-		c() {
-			if (default_slot) default_slot.c();
-		},
-		l(nodes) {
-			if (default_slot) default_slot.l(nodes);
-		},
-		m(target, anchor) {
-			if (default_slot) {
-				default_slot.m(target, anchor);
-			}
-
-			current = true;
-		},
-		p(ctx, dirty) {
-			if (default_slot) {
-				if (default_slot.p && dirty & /*$$scope*/ 2) {
-					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[1], dirty, null, null);
-				}
-			}
-		},
-		i(local) {
-			if (current) return;
-			transition_in(default_slot, local);
-			current = true;
-		},
-		o(local) {
-			transition_out(default_slot, local);
-			current = false;
-		},
-		d(detaching) {
-			if (default_slot) default_slot.d(detaching);
-		}
-	};
-}
-
-function create_fragment$6(ctx) {
-	let nearby;
-	let current;
-
-	nearby = new Nearby({
-			props: {
-				class: "" + (nearby_x + " " + on_right),
-				$$slots: { default: [create_default_slot$4] },
-				$$scope: { ctx }
-			}
-		});
-
-	return {
-		c() {
-			create_component(nearby.$$.fragment);
-		},
-		l(nodes) {
-			claim_component(nearby.$$.fragment, nodes);
-		},
-		m(target, anchor) {
-			mount_component(nearby, target, anchor);
-			current = true;
-		},
-		p(ctx, [dirty]) {
-			const nearby_changes = {};
-
-			if (dirty & /*$$scope*/ 2) {
-				nearby_changes.$$scope = { dirty, ctx };
-			}
-
-			nearby.$set(nearby_changes);
-		},
-		i(local) {
-			if (current) return;
-			transition_in(nearby.$$.fragment, local);
-			current = true;
-		},
-		o(local) {
-			transition_out(nearby.$$.fragment, local);
-			current = false;
-		},
-		d(detaching) {
-			destroy_component(nearby, detaching);
-		}
-	};
-}
-
-function instance$6($$self, $$props, $$invalidate) {
-	let { $$slots: slots = {}, $$scope } = $$props;
-
-	$$self.$$set = $$props => {
-		if ("$$scope" in $$props) $$invalidate(1, $$scope = $$props.$$scope);
-	};
-
-	return [slots, $$scope];
-}
-
-class On_right extends SvelteComponent {
-	constructor(options) {
-		super();
-		init(this, options, instance$6, create_fragment$6, safe_not_equal, {});
-	}
-}
-
-/* src/In_back.svelte generated by Svelte v3.32.0 */
-
-function create_default_slot$5(ctx) {
-	let current;
-	const default_slot_template = /*#slots*/ ctx[0].default;
-	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[1], null);
-
-	return {
-		c() {
-			if (default_slot) default_slot.c();
-		},
-		l(nodes) {
-			if (default_slot) default_slot.l(nodes);
-		},
-		m(target, anchor) {
-			if (default_slot) {
-				default_slot.m(target, anchor);
-			}
-
-			current = true;
-		},
-		p(ctx, dirty) {
-			if (default_slot) {
-				if (default_slot.p && dirty & /*$$scope*/ 2) {
-					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[1], dirty, null, null);
-				}
-			}
-		},
-		i(local) {
-			if (current) return;
-			transition_in(default_slot, local);
-			current = true;
-		},
-		o(local) {
-			transition_out(default_slot, local);
-			current = false;
-		},
-		d(detaching) {
-			if (default_slot) default_slot.d(detaching);
-		}
-	};
-}
-
-function create_fragment$7(ctx) {
-	let nearby;
-	let current;
-
-	nearby = new Nearby({
-			props: {
-				class: "" + (nearby_x + " " + nearby_y + " " + in_back),
-				$$slots: { default: [create_default_slot$5] },
-				$$scope: { ctx }
-			}
-		});
-
-	return {
-		c() {
-			create_component(nearby.$$.fragment);
-		},
-		l(nodes) {
-			claim_component(nearby.$$.fragment, nodes);
-		},
-		m(target, anchor) {
-			mount_component(nearby, target, anchor);
-			current = true;
-		},
-		p(ctx, [dirty]) {
-			const nearby_changes = {};
-
-			if (dirty & /*$$scope*/ 2) {
-				nearby_changes.$$scope = { dirty, ctx };
-			}
-
-			nearby.$set(nearby_changes);
-		},
-		i(local) {
-			if (current) return;
-			transition_in(nearby.$$.fragment, local);
-			current = true;
-		},
-		o(local) {
-			transition_out(nearby.$$.fragment, local);
-			current = false;
-		},
-		d(detaching) {
-			destroy_component(nearby, detaching);
-		}
-	};
-}
-
-function instance$7($$self, $$props, $$invalidate) {
-	let { $$slots: slots = {}, $$scope } = $$props;
-
-	$$self.$$set = $$props => {
-		if ("$$scope" in $$props) $$invalidate(1, $$scope = $$props.$$scope);
-	};
-
-	return [slots, $$scope];
-}
-
-class In_back extends SvelteComponent {
-	constructor(options) {
-		super();
-		init(this, options, instance$7, create_fragment$7, safe_not_equal, {});
-	}
-}
-
-/* src/In_front.svelte generated by Svelte v3.32.0 */
-
-function create_default_slot$6(ctx) {
-	let current;
-	const default_slot_template = /*#slots*/ ctx[0].default;
-	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[1], null);
-
-	return {
-		c() {
-			if (default_slot) default_slot.c();
-		},
-		l(nodes) {
-			if (default_slot) default_slot.l(nodes);
-		},
-		m(target, anchor) {
-			if (default_slot) {
-				default_slot.m(target, anchor);
-			}
-
-			current = true;
-		},
-		p(ctx, dirty) {
-			if (default_slot) {
-				if (default_slot.p && dirty & /*$$scope*/ 2) {
-					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[1], dirty, null, null);
-				}
-			}
-		},
-		i(local) {
-			if (current) return;
-			transition_in(default_slot, local);
-			current = true;
-		},
-		o(local) {
-			transition_out(default_slot, local);
-			current = false;
-		},
-		d(detaching) {
-			if (default_slot) default_slot.d(detaching);
-		}
-	};
-}
-
-function create_fragment$8(ctx) {
-	let nearby;
-	let current;
-
-	nearby = new Nearby({
-			props: {
-				class: "" + (nearby_x + " " + nearby_y),
-				$$slots: { default: [create_default_slot$6] },
-				$$scope: { ctx }
-			}
-		});
-
-	return {
-		c() {
-			create_component(nearby.$$.fragment);
-		},
-		l(nodes) {
-			claim_component(nearby.$$.fragment, nodes);
-		},
-		m(target, anchor) {
-			mount_component(nearby, target, anchor);
-			current = true;
-		},
-		p(ctx, [dirty]) {
-			const nearby_changes = {};
-
-			if (dirty & /*$$scope*/ 2) {
-				nearby_changes.$$scope = { dirty, ctx };
-			}
-
-			nearby.$set(nearby_changes);
-		},
-		i(local) {
-			if (current) return;
-			transition_in(nearby.$$.fragment, local);
-			current = true;
-		},
-		o(local) {
-			transition_out(nearby.$$.fragment, local);
-			current = false;
-		},
-		d(detaching) {
-			destroy_component(nearby, detaching);
-		}
-	};
-}
-
-function instance$8($$self, $$props, $$invalidate) {
-	let { $$slots: slots = {}, $$scope } = $$props;
-
-	$$self.$$set = $$props => {
-		if ("$$scope" in $$props) $$invalidate(1, $$scope = $$props.$$scope);
-	};
-
-	return [slots, $$scope];
-}
-
-class In_front extends SvelteComponent {
-	constructor(options) {
-		super();
-		init(this, options, instance$8, create_fragment$8, safe_not_equal, {});
-	}
-}
-
-var css_248z$3 = ".nearby_slot_container_n10it0ph > .nearby_n1ymrolb > .nearby_container_nc97fwj > [slot]{display:contents;}\n";
+var css_248z$1 = ".layout_lb7yjy4{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-wrap:nowrap;-ms-flex-wrap:nowrap;flex-wrap:nowrap;-webkit-align-items:flex-start;-webkit-box-align:flex-start;-ms-flex-align:flex-start;align-items:flex-start;-webkit-box-pack:start;-webkit-justify-content:flex-start;-ms-flex-pack:start;justify-content:flex-start;overflow:visible;}\n.layout_x_l1m6442m{-webkit-flex-direction:row;-ms-flex-direction:row;flex-direction:row;}.layout_x_l1m6442m > .element_ekolm46[data-height-base=fill]{-webkit-align-self:stretch;-ms-flex-item-align:stretch;align-self:stretch;}.layout_x_l1m6442m > .element_ekolm46[data-width-base=fill]{-webkit-flex-basis:0;-ms-flex-preferred-size:0;flex-basis:0;-webkit-box-flex:var(--width-base-value);-webkit-flex-grow:var(--width-base-value);-ms-flex-positive:var(--width-base-value);flex-grow:var(--width-base-value);}.layout_x_l1m6442m > .element_ekolm46[data-height-base=content]{height:auto;}.layout_x_l1m6442m > .element_ekolm46[data-width-base=content]{-webkit-flex-basis:auto;-ms-flex-preferred-size:auto;flex-basis:auto;-webkit-box-flex:0;-webkit-flex-grow:0;-ms-flex-positive:0;flex-grow:0;}\n.layout_y_l8o4g34{-webkit-flex-direction:column;-ms-flex-direction:column;flex-direction:column;}.layout_y_l8o4g34 > .element_ekolm46[data-height-base=fill]{-webkit-flex-basis:0;-ms-flex-preferred-size:0;flex-basis:0;-webkit-box-flex:var(--height-base-value);-webkit-flex-grow:var(--height-base-value);-ms-flex-positive:var(--height-base-value);flex-grow:var(--height-base-value);}.layout_y_l8o4g34 > .element_ekolm46[data-width-base=fill]{-webkit-align-self:stretch;-ms-flex-item-align:stretch;align-self:stretch;}.layout_y_l8o4g34 > .element_ekolm46[data-height-base=content]{-webkit-flex-basis:auto;-ms-flex-preferred-size:auto;flex-basis:auto;-webkit-box-flex:0;-webkit-flex-grow:0;-ms-flex-positive:0;flex-grow:0;}.layout_y_l8o4g34 > .element_ekolm46[data-width-base=content]{width:auto;}\n";
+styleInject(css_248z$1);
+
+/*
+ * styles necessary for a dom node containing one or more children (layout container)
+ *
+ * a layout container must choose an axis as its basis for its layout, even if it can only contain one child
+ */
+// static styles
+
+const layout = "layout_lb7yjy4";
+
+const overflow_style = (axis, clip, scroll) => clip || scroll ? `overflow-${axis}: ${clip ? 'hidden' : 'auto'};` : ''; // dynamic styles
+
+
+const layout_style = ({
+  clip_x,
+  clip_y,
+  scroll_x,
+  scroll_y,
+  wrap
+}) => [overflow_style('x', clip_x, scroll_x), overflow_style('y', clip_y, scroll_y), wrap ? 'flex-wrap: wrap;' : ''].join(' '); // static styles for x layout
+
+const layout_x = "layout_x_l1m6442m"; // static styles for y layout
+
+const layout_y = "layout_y_l8o4g34"; // dynamic styles for x layout
+
+const layout_x_style = ({
+  align_bottom,
+  center_y,
+  align_right,
+  center_x
+}) => [align_right || center_x ? `justify-content: ${align_right ? 'flex-end' : 'center'};` : '', align_bottom || center_y ? `align-items: ${align_bottom ? 'flex-end' : 'center'};` : ''].join(''); // dynamic styles for y layout
+
+const layout_y_style = ({
+  align_bottom,
+  center_y,
+  align_right,
+  center_x
+}) => [align_bottom || center_y ? `justify-content: ${align_bottom ? 'flex-end' : 'center'};` : '', align_right || center_x ? `align-items: ${align_right ? 'flex-end' : 'center'};` : ''].join(''); // dynamic styles for layout with spacing
+
+const spacing_context = ({
+  x,
+  y
+}) => [y ? `margin-top: -${y}px;` : '', x ? `margin-left: -${x}px;` : ''].join('');
+
+var css_248z$2 = ".nearby_n1ymrolb{position:static;margin:0;pointer-events:none;}\n.nearby_container_nc97fwj{position:absolute !important;pointer-events:auto !important;z-index:1;}\n.nearby_x_n1dmxc9z > .nearby_container_nc97fwj{top:0;height:100%;-webkit-align-items:flex-start;-webkit-box-align:flex-start;-ms-flex-align:flex-start;align-items:flex-start;}.nearby_x_n1dmxc9z > .nearby_container_nc97fwj > .element_ekolm46[data-height-base=fill]{height:100%;}\n.nearby_y_n91qj6k > .nearby_container_nc97fwj{left:0;width:100%;}.nearby_y_n91qj6k > .nearby_container_nc97fwj > .element_ekolm46[data-width-base=fill]{width:100%;}\n.in_back_i1ulrqav > .nearby_container_nc97fwj{z-index:0;}\n.on_left_o1xlmqx2 > .nearby_container_nc97fwj{right:100%;-webkit-box-pack:end;-webkit-justify-content:flex-end;-ms-flex-pack:end;justify-content:flex-end;}\n.on_right_okq8kx3 > .nearby_container_nc97fwj{left:100%;}\n.above_a105wjvu > .nearby_container_nc97fwj{bottom:100%;}\n.below_byr7vx7 > .nearby_container_nc97fwj{top:100%;}\n";
+styleInject(css_248z$2);
+
+const nearby = "nearby_n1ymrolb";
+const nearby_container = "nearby_container_nc97fwj";
+const nearby_x = "nearby_x_n1dmxc9z";
+const nearby_y = "nearby_y_n91qj6k";
+const in_back = "in_back_i1ulrqav";
+const on_left = "on_left_o1xlmqx2";
+const on_right = "on_right_okq8kx3";
+const above = "above_a105wjvu";
+const below = "below_byr7vx7";
+
+var css_248z$3 = ".box_b15mj1xn > :not(.nearby_n1ymrolb) ~ :not(.nearby_n1ymrolb){visibility:hidden;}.box_b15mj1xn > :not(.nearby_n1ymrolb) ~ :not(.nearby_n1ymrolb):before{content:\"Error: Box may only contain one child.\";visibility:visible;background:red;color:white;display:block;font-weight:bold;padding:30px;}.box_b15mj1xn > :not(.nearby_n1ymrolb) ~ :not(.nearby_n1ymrolb) ~ :not(.nearby_n1ymrolb):before{display:none;}\n";
 styleInject(css_248z$3);
 
-/* src/Container.svelte generated by Svelte v3.32.0 */
+/* src/Box.svelte generated by Svelte v3.32.0 */
 
-const get_in_front_slot_changes = dirty => ({});
-
-const get_in_front_slot_context = ctx => ({});
-
-const get_on_right_slot_changes = dirty => ({});
-
-const get_on_right_slot_context = ctx => ({});
-
-const get_on_left_slot_changes = dirty => ({});
-
-const get_on_left_slot_context = ctx => ({});
-
-const get_below_slot_changes = dirty => ({});
-
-const get_below_slot_context = ctx => ({});
-
-const get_above_slot_changes = dirty => ({});
-
-const get_above_slot_context = ctx => ({});
-
-const get_in_back_slot_changes = dirty => ({});
-
-const get_in_back_slot_context = ctx => ({}); // (41:1) {#if $$slots.in_back}
-
-
-function create_if_block_5(ctx) {
-  let in_back;
-  let current;
-  in_back = new In_back({
-    props: {
-      $$slots: {
-        default: [create_default_slot_7]
-      },
-      $$scope: {
-        ctx
-      }
-    }
-  });
-  return {
-    c() {
-      create_component(in_back.$$.fragment);
-    },
-
-    l(nodes) {
-      claim_component(in_back.$$.fragment, nodes);
-    },
-
-    m(target, anchor) {
-      mount_component(in_back, target, anchor);
-      current = true;
-    },
-
-    p(ctx, dirty) {
-      const in_back_changes = {};
-
-      if (dirty &
-      /*$$scope*/
-      32768) {
-        in_back_changes.$$scope = {
-          dirty,
-          ctx
-        };
-      }
-
-      in_back.$set(in_back_changes);
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(in_back.$$.fragment, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(in_back.$$.fragment, local);
-      current = false;
-    },
-
-    d(detaching) {
-      destroy_component(in_back, detaching);
-    }
-
-  };
-} // (41:23) <In_back>
-
-
-function create_default_slot_7(ctx) {
-  let current;
-  const in_back_slot_template =
-  /*#slots*/
-  ctx[13].in_back;
-  const in_back_slot = create_slot(in_back_slot_template, ctx,
-  /*$$scope*/
-  ctx[15], get_in_back_slot_context);
-  return {
-    c() {
-      if (in_back_slot) in_back_slot.c();
-    },
-
-    l(nodes) {
-      if (in_back_slot) in_back_slot.l(nodes);
-    },
-
-    m(target, anchor) {
-      if (in_back_slot) {
-        in_back_slot.m(target, anchor);
-      }
-
-      current = true;
-    },
-
-    p(ctx, dirty) {
-      if (in_back_slot) {
-        if (in_back_slot.p && dirty &
-        /*$$scope*/
-        32768) {
-          update_slot(in_back_slot, in_back_slot_template, ctx,
-          /*$$scope*/
-          ctx[15], dirty, get_in_back_slot_changes, get_in_back_slot_context);
-        }
-      }
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(in_back_slot, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(in_back_slot, local);
-      current = false;
-    },
-
-    d(detaching) {
-      if (in_back_slot) in_back_slot.d(detaching);
-    }
-
-  };
-} // (43:1) <Spacing_Context x={spacing_x} y={spacing_y}>
-
-
-function create_default_slot_6(ctx) {
+function create_default_slot$1(ctx) {
   let current;
   const default_slot_template =
   /*#slots*/
-  ctx[13].default;
+  ctx[5].default;
   const default_slot = create_slot(default_slot_template, ctx,
   /*$$scope*/
-  ctx[15], null);
+  ctx[7], null);
   return {
     c() {
       if (default_slot) default_slot.c();
@@ -1788,10 +895,10 @@ function create_default_slot_6(ctx) {
       if (default_slot) {
         if (default_slot.p && dirty &
         /*$$scope*/
-        32768) {
+        128) {
           update_slot(default_slot, default_slot_template, ctx,
           /*$$scope*/
-          ctx[15], dirty, null, null);
+          ctx[7], dirty, null, null);
         }
       }
     },
@@ -1812,947 +919,36 @@ function create_default_slot_6(ctx) {
     }
 
   };
-} // (47:1) {#if $$slots.above}
-
-
-function create_if_block_4(ctx) {
-  let above;
-  let current;
-  above = new Above({
-    props: {
-      $$slots: {
-        default: [create_default_slot_5]
-      },
-      $$scope: {
-        ctx
-      }
-    }
-  });
-  return {
-    c() {
-      create_component(above.$$.fragment);
-    },
-
-    l(nodes) {
-      claim_component(above.$$.fragment, nodes);
-    },
-
-    m(target, anchor) {
-      mount_component(above, target, anchor);
-      current = true;
-    },
-
-    p(ctx, dirty) {
-      const above_changes = {};
-
-      if (dirty &
-      /*$$scope*/
-      32768) {
-        above_changes.$$scope = {
-          dirty,
-          ctx
-        };
-      }
-
-      above.$set(above_changes);
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(above.$$.fragment, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(above.$$.fragment, local);
-      current = false;
-    },
-
-    d(detaching) {
-      destroy_component(above, detaching);
-    }
-
-  };
-} // (47:21) <Above>
-
-
-function create_default_slot_5(ctx) {
-  let current;
-  const above_slot_template =
-  /*#slots*/
-  ctx[13].above;
-  const above_slot = create_slot(above_slot_template, ctx,
-  /*$$scope*/
-  ctx[15], get_above_slot_context);
-  return {
-    c() {
-      if (above_slot) above_slot.c();
-    },
-
-    l(nodes) {
-      if (above_slot) above_slot.l(nodes);
-    },
-
-    m(target, anchor) {
-      if (above_slot) {
-        above_slot.m(target, anchor);
-      }
-
-      current = true;
-    },
-
-    p(ctx, dirty) {
-      if (above_slot) {
-        if (above_slot.p && dirty &
-        /*$$scope*/
-        32768) {
-          update_slot(above_slot, above_slot_template, ctx,
-          /*$$scope*/
-          ctx[15], dirty, get_above_slot_changes, get_above_slot_context);
-        }
-      }
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(above_slot, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(above_slot, local);
-      current = false;
-    },
-
-    d(detaching) {
-      if (above_slot) above_slot.d(detaching);
-    }
-
-  };
-} // (48:1) {#if $$slots.below}
-
-
-function create_if_block_3(ctx) {
-  let below;
-  let current;
-  below = new Below({
-    props: {
-      $$slots: {
-        default: [create_default_slot_4]
-      },
-      $$scope: {
-        ctx
-      }
-    }
-  });
-  return {
-    c() {
-      create_component(below.$$.fragment);
-    },
-
-    l(nodes) {
-      claim_component(below.$$.fragment, nodes);
-    },
-
-    m(target, anchor) {
-      mount_component(below, target, anchor);
-      current = true;
-    },
-
-    p(ctx, dirty) {
-      const below_changes = {};
-
-      if (dirty &
-      /*$$scope*/
-      32768) {
-        below_changes.$$scope = {
-          dirty,
-          ctx
-        };
-      }
-
-      below.$set(below_changes);
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(below.$$.fragment, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(below.$$.fragment, local);
-      current = false;
-    },
-
-    d(detaching) {
-      destroy_component(below, detaching);
-    }
-
-  };
-} // (48:21) <Below>
-
-
-function create_default_slot_4(ctx) {
-  let current;
-  const below_slot_template =
-  /*#slots*/
-  ctx[13].below;
-  const below_slot = create_slot(below_slot_template, ctx,
-  /*$$scope*/
-  ctx[15], get_below_slot_context);
-  return {
-    c() {
-      if (below_slot) below_slot.c();
-    },
-
-    l(nodes) {
-      if (below_slot) below_slot.l(nodes);
-    },
-
-    m(target, anchor) {
-      if (below_slot) {
-        below_slot.m(target, anchor);
-      }
-
-      current = true;
-    },
-
-    p(ctx, dirty) {
-      if (below_slot) {
-        if (below_slot.p && dirty &
-        /*$$scope*/
-        32768) {
-          update_slot(below_slot, below_slot_template, ctx,
-          /*$$scope*/
-          ctx[15], dirty, get_below_slot_changes, get_below_slot_context);
-        }
-      }
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(below_slot, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(below_slot, local);
-      current = false;
-    },
-
-    d(detaching) {
-      if (below_slot) below_slot.d(detaching);
-    }
-
-  };
-} // (49:1) {#if $$slots.on_left}
-
-
-function create_if_block_2(ctx) {
-  let on_left;
-  let current;
-  on_left = new On_left({
-    props: {
-      $$slots: {
-        default: [create_default_slot_3]
-      },
-      $$scope: {
-        ctx
-      }
-    }
-  });
-  return {
-    c() {
-      create_component(on_left.$$.fragment);
-    },
-
-    l(nodes) {
-      claim_component(on_left.$$.fragment, nodes);
-    },
-
-    m(target, anchor) {
-      mount_component(on_left, target, anchor);
-      current = true;
-    },
-
-    p(ctx, dirty) {
-      const on_left_changes = {};
-
-      if (dirty &
-      /*$$scope*/
-      32768) {
-        on_left_changes.$$scope = {
-          dirty,
-          ctx
-        };
-      }
-
-      on_left.$set(on_left_changes);
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(on_left.$$.fragment, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(on_left.$$.fragment, local);
-      current = false;
-    },
-
-    d(detaching) {
-      destroy_component(on_left, detaching);
-    }
-
-  };
-} // (49:23) <On_left>
-
-
-function create_default_slot_3(ctx) {
-  let current;
-  const on_left_slot_template =
-  /*#slots*/
-  ctx[13].on_left;
-  const on_left_slot = create_slot(on_left_slot_template, ctx,
-  /*$$scope*/
-  ctx[15], get_on_left_slot_context);
-  return {
-    c() {
-      if (on_left_slot) on_left_slot.c();
-    },
-
-    l(nodes) {
-      if (on_left_slot) on_left_slot.l(nodes);
-    },
-
-    m(target, anchor) {
-      if (on_left_slot) {
-        on_left_slot.m(target, anchor);
-      }
-
-      current = true;
-    },
-
-    p(ctx, dirty) {
-      if (on_left_slot) {
-        if (on_left_slot.p && dirty &
-        /*$$scope*/
-        32768) {
-          update_slot(on_left_slot, on_left_slot_template, ctx,
-          /*$$scope*/
-          ctx[15], dirty, get_on_left_slot_changes, get_on_left_slot_context);
-        }
-      }
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(on_left_slot, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(on_left_slot, local);
-      current = false;
-    },
-
-    d(detaching) {
-      if (on_left_slot) on_left_slot.d(detaching);
-    }
-
-  };
-} // (50:1) {#if $$slots.on_right}
-
-
-function create_if_block_1(ctx) {
-  let on_right;
-  let current;
-  on_right = new On_right({
-    props: {
-      $$slots: {
-        default: [create_default_slot_2]
-      },
-      $$scope: {
-        ctx
-      }
-    }
-  });
-  return {
-    c() {
-      create_component(on_right.$$.fragment);
-    },
-
-    l(nodes) {
-      claim_component(on_right.$$.fragment, nodes);
-    },
-
-    m(target, anchor) {
-      mount_component(on_right, target, anchor);
-      current = true;
-    },
-
-    p(ctx, dirty) {
-      const on_right_changes = {};
-
-      if (dirty &
-      /*$$scope*/
-      32768) {
-        on_right_changes.$$scope = {
-          dirty,
-          ctx
-        };
-      }
-
-      on_right.$set(on_right_changes);
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(on_right.$$.fragment, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(on_right.$$.fragment, local);
-      current = false;
-    },
-
-    d(detaching) {
-      destroy_component(on_right, detaching);
-    }
-
-  };
-} // (50:24) <On_right>
-
-
-function create_default_slot_2(ctx) {
-  let current;
-  const on_right_slot_template =
-  /*#slots*/
-  ctx[13].on_right;
-  const on_right_slot = create_slot(on_right_slot_template, ctx,
-  /*$$scope*/
-  ctx[15], get_on_right_slot_context);
-  return {
-    c() {
-      if (on_right_slot) on_right_slot.c();
-    },
-
-    l(nodes) {
-      if (on_right_slot) on_right_slot.l(nodes);
-    },
-
-    m(target, anchor) {
-      if (on_right_slot) {
-        on_right_slot.m(target, anchor);
-      }
-
-      current = true;
-    },
-
-    p(ctx, dirty) {
-      if (on_right_slot) {
-        if (on_right_slot.p && dirty &
-        /*$$scope*/
-        32768) {
-          update_slot(on_right_slot, on_right_slot_template, ctx,
-          /*$$scope*/
-          ctx[15], dirty, get_on_right_slot_changes, get_on_right_slot_context);
-        }
-      }
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(on_right_slot, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(on_right_slot, local);
-      current = false;
-    },
-
-    d(detaching) {
-      if (on_right_slot) on_right_slot.d(detaching);
-    }
-
-  };
-} // (51:1) {#if $$slots.in_front}
-
-
-function create_if_block(ctx) {
-  let in_front;
-  let current;
-  in_front = new In_front({
-    props: {
-      $$slots: {
-        default: [create_default_slot_1]
-      },
-      $$scope: {
-        ctx
-      }
-    }
-  });
-  return {
-    c() {
-      create_component(in_front.$$.fragment);
-    },
-
-    l(nodes) {
-      claim_component(in_front.$$.fragment, nodes);
-    },
-
-    m(target, anchor) {
-      mount_component(in_front, target, anchor);
-      current = true;
-    },
-
-    p(ctx, dirty) {
-      const in_front_changes = {};
-
-      if (dirty &
-      /*$$scope*/
-      32768) {
-        in_front_changes.$$scope = {
-          dirty,
-          ctx
-        };
-      }
-
-      in_front.$set(in_front_changes);
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(in_front.$$.fragment, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(in_front.$$.fragment, local);
-      current = false;
-    },
-
-    d(detaching) {
-      destroy_component(in_front, detaching);
-    }
-
-  };
-} // (51:24) <In_front>
-
-
-function create_default_slot_1(ctx) {
-  let current;
-  const in_front_slot_template =
-  /*#slots*/
-  ctx[13].in_front;
-  const in_front_slot = create_slot(in_front_slot_template, ctx,
-  /*$$scope*/
-  ctx[15], get_in_front_slot_context);
-  return {
-    c() {
-      if (in_front_slot) in_front_slot.c();
-    },
-
-    l(nodes) {
-      if (in_front_slot) in_front_slot.l(nodes);
-    },
-
-    m(target, anchor) {
-      if (in_front_slot) {
-        in_front_slot.m(target, anchor);
-      }
-
-      current = true;
-    },
-
-    p(ctx, dirty) {
-      if (in_front_slot) {
-        if (in_front_slot.p && dirty &
-        /*$$scope*/
-        32768) {
-          update_slot(in_front_slot, in_front_slot_template, ctx,
-          /*$$scope*/
-          ctx[15], dirty, get_in_front_slot_changes, get_in_front_slot_context);
-        }
-      }
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(in_front_slot, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(in_front_slot, local);
-      current = false;
-    },
-
-    d(detaching) {
-      if (in_front_slot) in_front_slot.d(detaching);
-    }
-
-  };
-} // (31:0) <Element  bind:ref  { ...$$restProps }  class="{ $$props.class || '' } { nearby_slot_container }"  style='   { style };   { overflow('x', clip_x, scroll_x) }   { overflow('y', clip_y, scroll_y) }  ' >
-
-
-function create_default_slot$7(ctx) {
-  let t0;
-  let spacing_context;
-  let t1;
-  let t2;
-  let t3;
-  let t4;
-  let t5;
-  let if_block5_anchor;
-  let current;
-  let if_block0 =
-  /*$$slots*/
-  ctx[12].in_back && create_if_block_5(ctx);
-  spacing_context = new Spacing_Context({
-    props: {
-      x:
-      /*spacing_x*/
-      ctx[1],
-      y:
-      /*spacing_y*/
-      ctx[2],
-      $$slots: {
-        default: [create_default_slot_6]
-      },
-      $$scope: {
-        ctx
-      }
-    }
-  });
-  let if_block1 =
-  /*$$slots*/
-  ctx[12].above && create_if_block_4(ctx);
-  let if_block2 =
-  /*$$slots*/
-  ctx[12].below && create_if_block_3(ctx);
-  let if_block3 =
-  /*$$slots*/
-  ctx[12].on_left && create_if_block_2(ctx);
-  let if_block4 =
-  /*$$slots*/
-  ctx[12].on_right && create_if_block_1(ctx);
-  let if_block5 =
-  /*$$slots*/
-  ctx[12].in_front && create_if_block(ctx);
-  return {
-    c() {
-      if (if_block0) if_block0.c();
-      t0 = space();
-      create_component(spacing_context.$$.fragment);
-      t1 = space();
-      if (if_block1) if_block1.c();
-      t2 = space();
-      if (if_block2) if_block2.c();
-      t3 = space();
-      if (if_block3) if_block3.c();
-      t4 = space();
-      if (if_block4) if_block4.c();
-      t5 = space();
-      if (if_block5) if_block5.c();
-      if_block5_anchor = empty();
-    },
-
-    l(nodes) {
-      if (if_block0) if_block0.l(nodes);
-      t0 = claim_space(nodes);
-      claim_component(spacing_context.$$.fragment, nodes);
-      t1 = claim_space(nodes);
-      if (if_block1) if_block1.l(nodes);
-      t2 = claim_space(nodes);
-      if (if_block2) if_block2.l(nodes);
-      t3 = claim_space(nodes);
-      if (if_block3) if_block3.l(nodes);
-      t4 = claim_space(nodes);
-      if (if_block4) if_block4.l(nodes);
-      t5 = claim_space(nodes);
-      if (if_block5) if_block5.l(nodes);
-      if_block5_anchor = empty();
-    },
-
-    m(target, anchor) {
-      if (if_block0) if_block0.m(target, anchor);
-      insert(target, t0, anchor);
-      mount_component(spacing_context, target, anchor);
-      insert(target, t1, anchor);
-      if (if_block1) if_block1.m(target, anchor);
-      insert(target, t2, anchor);
-      if (if_block2) if_block2.m(target, anchor);
-      insert(target, t3, anchor);
-      if (if_block3) if_block3.m(target, anchor);
-      insert(target, t4, anchor);
-      if (if_block4) if_block4.m(target, anchor);
-      insert(target, t5, anchor);
-      if (if_block5) if_block5.m(target, anchor);
-      insert(target, if_block5_anchor, anchor);
-      current = true;
-    },
-
-    p(ctx, dirty) {
-      if (
-      /*$$slots*/
-      ctx[12].in_back) {
-        if (if_block0) {
-          if_block0.p(ctx, dirty);
-
-          if (dirty &
-          /*$$slots*/
-          4096) {
-            transition_in(if_block0, 1);
-          }
-        } else {
-          if_block0 = create_if_block_5(ctx);
-          if_block0.c();
-          transition_in(if_block0, 1);
-          if_block0.m(t0.parentNode, t0);
-        }
-      } else if (if_block0) {
-        group_outros();
-        transition_out(if_block0, 1, 1, () => {
-          if_block0 = null;
-        });
-        check_outros();
-      }
-
-      const spacing_context_changes = {};
-      if (dirty &
-      /*spacing_x*/
-      2) spacing_context_changes.x =
-      /*spacing_x*/
-      ctx[1];
-      if (dirty &
-      /*spacing_y*/
-      4) spacing_context_changes.y =
-      /*spacing_y*/
-      ctx[2];
-
-      if (dirty &
-      /*$$scope*/
-      32768) {
-        spacing_context_changes.$$scope = {
-          dirty,
-          ctx
-        };
-      }
-
-      spacing_context.$set(spacing_context_changes);
-
-      if (
-      /*$$slots*/
-      ctx[12].above) {
-        if (if_block1) {
-          if_block1.p(ctx, dirty);
-
-          if (dirty &
-          /*$$slots*/
-          4096) {
-            transition_in(if_block1, 1);
-          }
-        } else {
-          if_block1 = create_if_block_4(ctx);
-          if_block1.c();
-          transition_in(if_block1, 1);
-          if_block1.m(t2.parentNode, t2);
-        }
-      } else if (if_block1) {
-        group_outros();
-        transition_out(if_block1, 1, 1, () => {
-          if_block1 = null;
-        });
-        check_outros();
-      }
-
-      if (
-      /*$$slots*/
-      ctx[12].below) {
-        if (if_block2) {
-          if_block2.p(ctx, dirty);
-
-          if (dirty &
-          /*$$slots*/
-          4096) {
-            transition_in(if_block2, 1);
-          }
-        } else {
-          if_block2 = create_if_block_3(ctx);
-          if_block2.c();
-          transition_in(if_block2, 1);
-          if_block2.m(t3.parentNode, t3);
-        }
-      } else if (if_block2) {
-        group_outros();
-        transition_out(if_block2, 1, 1, () => {
-          if_block2 = null;
-        });
-        check_outros();
-      }
-
-      if (
-      /*$$slots*/
-      ctx[12].on_left) {
-        if (if_block3) {
-          if_block3.p(ctx, dirty);
-
-          if (dirty &
-          /*$$slots*/
-          4096) {
-            transition_in(if_block3, 1);
-          }
-        } else {
-          if_block3 = create_if_block_2(ctx);
-          if_block3.c();
-          transition_in(if_block3, 1);
-          if_block3.m(t4.parentNode, t4);
-        }
-      } else if (if_block3) {
-        group_outros();
-        transition_out(if_block3, 1, 1, () => {
-          if_block3 = null;
-        });
-        check_outros();
-      }
-
-      if (
-      /*$$slots*/
-      ctx[12].on_right) {
-        if (if_block4) {
-          if_block4.p(ctx, dirty);
-
-          if (dirty &
-          /*$$slots*/
-          4096) {
-            transition_in(if_block4, 1);
-          }
-        } else {
-          if_block4 = create_if_block_1(ctx);
-          if_block4.c();
-          transition_in(if_block4, 1);
-          if_block4.m(t5.parentNode, t5);
-        }
-      } else if (if_block4) {
-        group_outros();
-        transition_out(if_block4, 1, 1, () => {
-          if_block4 = null;
-        });
-        check_outros();
-      }
-
-      if (
-      /*$$slots*/
-      ctx[12].in_front) {
-        if (if_block5) {
-          if_block5.p(ctx, dirty);
-
-          if (dirty &
-          /*$$slots*/
-          4096) {
-            transition_in(if_block5, 1);
-          }
-        } else {
-          if_block5 = create_if_block(ctx);
-          if_block5.c();
-          transition_in(if_block5, 1);
-          if_block5.m(if_block5_anchor.parentNode, if_block5_anchor);
-        }
-      } else if (if_block5) {
-        group_outros();
-        transition_out(if_block5, 1, 1, () => {
-          if_block5 = null;
-        });
-        check_outros();
-      }
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(if_block0);
-      transition_in(spacing_context.$$.fragment, local);
-      transition_in(if_block1);
-      transition_in(if_block2);
-      transition_in(if_block3);
-      transition_in(if_block4);
-      transition_in(if_block5);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(if_block0);
-      transition_out(spacing_context.$$.fragment, local);
-      transition_out(if_block1);
-      transition_out(if_block2);
-      transition_out(if_block3);
-      transition_out(if_block4);
-      transition_out(if_block5);
-      current = false;
-    },
-
-    d(detaching) {
-      if (if_block0) if_block0.d(detaching);
-      if (detaching) detach(t0);
-      destroy_component(spacing_context, detaching);
-      if (detaching) detach(t1);
-      if (if_block1) if_block1.d(detaching);
-      if (detaching) detach(t2);
-      if (if_block2) if_block2.d(detaching);
-      if (detaching) detach(t3);
-      if (if_block3) if_block3.d(detaching);
-      if (detaching) detach(t4);
-      if (if_block4) if_block4.d(detaching);
-      if (detaching) detach(t5);
-      if (if_block5) if_block5.d(detaching);
-      if (detaching) detach(if_block5_anchor);
-    }
-
-  };
 }
 
-function create_fragment$9(ctx) {
+function create_fragment$2(ctx) {
   let element_1;
   let updating_ref;
   let current;
   const element_1_spread_levels = [
   /*$$restProps*/
-  ctx[10], {
-    class: "" + ((
-    /*$$props*/
-    ctx[11].class || "") + " " +
-    /*nearby_slot_container*/
-    ctx[8])
+  ctx[4], {
+    class:
+    /*className*/
+    ctx[2]
   }, {
-    style: "\n\t\t" +
+    style: "" + (layout_style(
+    /*$$props*/
+    ctx[3]) + layout_x_style(
+    /*$$props*/
+    ctx[3]) +
     /*style*/
-    ctx[7] + ";\n\t\t" +
-    /*overflow*/
-    ctx[9]("x",
-    /*clip_x*/
-    ctx[3],
-    /*scroll_x*/
-    ctx[5]) + "\n\t\t" +
-    /*overflow*/
-    ctx[9]("y",
-    /*clip_y*/
-    ctx[4],
-    /*scroll_y*/
-    ctx[6]) + "\n\t"
+    ctx[1])
   }];
 
   function element_1_ref_binding(value) {
     /*element_1_ref_binding*/
-    ctx[14].call(null, value);
+    ctx[6].call(null, value);
   }
 
   let element_1_props = {
     $$slots: {
-      default: [create_default_slot$7]
+      default: [create_default_slot$1]
     },
     $$scope: {
       ctx
@@ -2791,42 +987,32 @@ function create_fragment$9(ctx) {
 
     p(ctx, [dirty]) {
       const element_1_changes = dirty &
-      /*$$restProps, $$props, nearby_slot_container, style, overflow, clip_x, scroll_x, clip_y, scroll_y*/
-      4088 ? get_spread_update(element_1_spread_levels, [dirty &
+      /*$$restProps, className, layout_style, $$props, layout_x_style, style*/
+      30 ? get_spread_update(element_1_spread_levels, [dirty &
       /*$$restProps*/
-      1024 && get_spread_object(
+      16 && get_spread_object(
       /*$$restProps*/
-      ctx[10]), dirty &
-      /*$$props, nearby_slot_container*/
-      2304 && {
-        class: "" + ((
-        /*$$props*/
-        ctx[11].class || "") + " " +
-        /*nearby_slot_container*/
-        ctx[8])
+      ctx[4]), dirty &
+      /*className*/
+      4 && {
+        class:
+        /*className*/
+        ctx[2]
       }, dirty &
-      /*style, overflow, clip_x, scroll_x, clip_y, scroll_y*/
-      760 && {
-        style: "\n\t\t" +
+      /*layout_style, $$props, layout_x_style, style*/
+      10 && {
+        style: "" + (layout_style(
+        /*$$props*/
+        ctx[3]) + layout_x_style(
+        /*$$props*/
+        ctx[3]) +
         /*style*/
-        ctx[7] + ";\n\t\t" +
-        /*overflow*/
-        ctx[9]("x",
-        /*clip_x*/
-        ctx[3],
-        /*scroll_x*/
-        ctx[5]) + "\n\t\t" +
-        /*overflow*/
-        ctx[9]("y",
-        /*clip_y*/
-        ctx[4],
-        /*scroll_y*/
-        ctx[6]) + "\n\t"
+        ctx[1])
       }]) : {};
 
       if (dirty &
-      /*$$scope, $$slots, spacing_x, spacing_y*/
-      36870) {
+      /*$$scope*/
+      128) {
         element_1_changes.$$scope = {
           dirty,
           ctx
@@ -2864,41 +1050,21 @@ function create_fragment$9(ctx) {
   };
 }
 
-function instance$9($$self, $$props, $$invalidate) {
-  const omit_props_names = ["ref", "spacing_x", "spacing_y", "clip_x", "clip_y", "scroll_x", "scroll_y", "style"];
+function instance$2($$self, $$props, $$invalidate) {
+  const omit_props_names = ["ref", "style"];
   let $$restProps = compute_rest_props($$props, omit_props_names);
   let {
     $$slots: slots = {},
     $$scope
   } = $$props;
-  const $$slots = compute_slots(slots);
+  const box = "box_b15mj1xn";
   let {
     ref = undefined
   } = $$props;
   let {
-    spacing_x = 0
-  } = $$props;
-  let {
-    spacing_y = 0
-  } = $$props;
-  let {
-    clip_x = false
-  } = $$props;
-  let {
-    clip_y = false
-  } = $$props;
-  let {
-    scroll_x = false
-  } = $$props;
-  let {
-    scroll_y = false
-  } = $$props;
-  let {
     style = ""
   } = $$props;
-  const nearby_slot_container = "nearby_slot_container_n10it0ph";
-
-  const overflow = (axis, clip, scroll) => `overflow-${axis}: ${clip ? "hidden" : scroll ? "auto" : "visible"};`;
+  const className = [$$props.class || "", box, layout_x, layout].join(" ");
 
   function element_1_ref_binding(value) {
     ref = value;
@@ -2906,1352 +1072,23 @@ function instance$9($$self, $$props, $$invalidate) {
   }
 
   $$self.$$set = $$new_props => {
-    $$invalidate(11, $$props = assign(assign({}, $$props), exclude_internal_props($$new_props)));
-    $$invalidate(10, $$restProps = compute_rest_props($$props, omit_props_names));
-    if ("ref" in $$new_props) $$invalidate(0, ref = $$new_props.ref);
-    if ("spacing_x" in $$new_props) $$invalidate(1, spacing_x = $$new_props.spacing_x);
-    if ("spacing_y" in $$new_props) $$invalidate(2, spacing_y = $$new_props.spacing_y);
-    if ("clip_x" in $$new_props) $$invalidate(3, clip_x = $$new_props.clip_x);
-    if ("clip_y" in $$new_props) $$invalidate(4, clip_y = $$new_props.clip_y);
-    if ("scroll_x" in $$new_props) $$invalidate(5, scroll_x = $$new_props.scroll_x);
-    if ("scroll_y" in $$new_props) $$invalidate(6, scroll_y = $$new_props.scroll_y);
-    if ("style" in $$new_props) $$invalidate(7, style = $$new_props.style);
-    if ("$$scope" in $$new_props) $$invalidate(15, $$scope = $$new_props.$$scope);
-  };
-
-  $$props = exclude_internal_props($$props);
-  return [ref, spacing_x, spacing_y, clip_x, clip_y, scroll_x, scroll_y, style, nearby_slot_container, overflow, $$restProps, $$props, $$slots, slots, element_1_ref_binding, $$scope];
-}
-
-class Container extends SvelteComponent {
-  constructor(options) {
-    super();
-    init(this, options, instance$9, create_fragment$9, safe_not_equal, {
-      ref: 0,
-      spacing_x: 1,
-      spacing_y: 2,
-      clip_x: 3,
-      clip_y: 4,
-      scroll_x: 5,
-      scroll_y: 6,
-      style: 7
-    });
-  }
-
-}
-
-var css_248z$4 = ".row_r6s9emb{-webkit-flex-direction:row;-ms-flex-direction:row;flex-direction:row;}.row_r6s9emb > .element_ekolm46[data-height-base=fill]{-webkit-align-self:stretch;-ms-flex-item-align:stretch;align-self:stretch;}.row_r6s9emb > .element_ekolm46[data-width-base=fill]{-webkit-flex-basis:0;-ms-flex-preferred-size:0;flex-basis:0;-webkit-box-flex:var(--width-base-value);-webkit-flex-grow:var(--width-base-value);-ms-flex-positive:var(--width-base-value);flex-grow:var(--width-base-value);}.row_r6s9emb > .element_ekolm46[data-height-base=content]{height:auto;}.row_r6s9emb > .element_ekolm46[data-width-base=content]{-webkit-flex-basis:auto;-ms-flex-preferred-size:auto;flex-basis:auto;-webkit-box-flex:0;-webkit-flex-grow:0;-ms-flex-positive:0;flex-grow:0;}\n";
-styleInject(css_248z$4);
-
-/* src/Row.svelte generated by Svelte v3.32.0 */
-
-const get_in_front_slot_changes$1 = dirty => ({});
-
-const get_in_front_slot_context$1 = ctx => ({
-  slot: "in_front"
-});
-
-const get_on_right_slot_changes$1 = dirty => ({});
-
-const get_on_right_slot_context$1 = ctx => ({
-  slot: "on_right"
-});
-
-const get_on_left_slot_changes$1 = dirty => ({});
-
-const get_on_left_slot_context$1 = ctx => ({
-  slot: "on_left"
-});
-
-const get_below_slot_changes$1 = dirty => ({});
-
-const get_below_slot_context$1 = ctx => ({
-  slot: "below"
-});
-
-const get_above_slot_changes$1 = dirty => ({});
-
-const get_above_slot_context$1 = ctx => ({
-  slot: "above"
-});
-
-const get_in_back_slot_changes$1 = dirty => ({});
-
-const get_in_back_slot_context$1 = ctx => ({
-  slot: "in_back"
-}); // (49:1) <slot name='in_back' slot='in_back'/>  <slot/>  <slot name='above' slot='above'/>  <slot name='below' slot='below'/>  <slot name='on_left' slot='on_left'/>  <slot name='on_right' slot='on_right'/>  <slot name='in_front' slot='in_front'/> </Container> 
-
-
-function create_in_back_slot(ctx) {
-  let current;
-  const in_back_slot_template =
-  /*#slots*/
-  ctx[10].in_back;
-  const in_back_slot = create_slot(in_back_slot_template, ctx,
-  /*$$scope*/
-  ctx[12], get_in_back_slot_context$1);
-  return {
-    c() {
-      if (in_back_slot) in_back_slot.c();
-    },
-
-    l(nodes) {
-      if (in_back_slot) in_back_slot.l(nodes);
-    },
-
-    m(target, anchor) {
-      if (in_back_slot) {
-        in_back_slot.m(target, anchor);
-      }
-
-      current = true;
-    },
-
-    p(ctx, dirty) {
-      if (in_back_slot) {
-        if (in_back_slot.p && dirty &
-        /*$$scope*/
-        4096) {
-          update_slot(in_back_slot, in_back_slot_template, ctx,
-          /*$$scope*/
-          ctx[12], dirty, get_in_back_slot_changes$1, get_in_back_slot_context$1);
-        }
-      }
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(in_back_slot, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(in_back_slot, local);
-      current = false;
-    },
-
-    d(detaching) {
-      if (in_back_slot) in_back_slot.d(detaching);
-    }
-
-  };
-} // (51:1) <slot name='above' slot='above'/>  <slot name='below' slot='below'/>  <slot name='on_left' slot='on_left'/>  <slot name='on_right' slot='on_right'/>  <slot name='in_front' slot='in_front'/> </Container> 
-
-
-function create_above_slot(ctx) {
-  let current;
-  const above_slot_template =
-  /*#slots*/
-  ctx[10].above;
-  const above_slot = create_slot(above_slot_template, ctx,
-  /*$$scope*/
-  ctx[12], get_above_slot_context$1);
-  return {
-    c() {
-      if (above_slot) above_slot.c();
-    },
-
-    l(nodes) {
-      if (above_slot) above_slot.l(nodes);
-    },
-
-    m(target, anchor) {
-      if (above_slot) {
-        above_slot.m(target, anchor);
-      }
-
-      current = true;
-    },
-
-    p(ctx, dirty) {
-      if (above_slot) {
-        if (above_slot.p && dirty &
-        /*$$scope*/
-        4096) {
-          update_slot(above_slot, above_slot_template, ctx,
-          /*$$scope*/
-          ctx[12], dirty, get_above_slot_changes$1, get_above_slot_context$1);
-        }
-      }
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(above_slot, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(above_slot, local);
-      current = false;
-    },
-
-    d(detaching) {
-      if (above_slot) above_slot.d(detaching);
-    }
-
-  };
-} // (52:1) <slot name='below' slot='below'/>  <slot name='on_left' slot='on_left'/>  <slot name='on_right' slot='on_right'/>  <slot name='in_front' slot='in_front'/> </Container> 
-
-
-function create_below_slot(ctx) {
-  let current;
-  const below_slot_template =
-  /*#slots*/
-  ctx[10].below;
-  const below_slot = create_slot(below_slot_template, ctx,
-  /*$$scope*/
-  ctx[12], get_below_slot_context$1);
-  return {
-    c() {
-      if (below_slot) below_slot.c();
-    },
-
-    l(nodes) {
-      if (below_slot) below_slot.l(nodes);
-    },
-
-    m(target, anchor) {
-      if (below_slot) {
-        below_slot.m(target, anchor);
-      }
-
-      current = true;
-    },
-
-    p(ctx, dirty) {
-      if (below_slot) {
-        if (below_slot.p && dirty &
-        /*$$scope*/
-        4096) {
-          update_slot(below_slot, below_slot_template, ctx,
-          /*$$scope*/
-          ctx[12], dirty, get_below_slot_changes$1, get_below_slot_context$1);
-        }
-      }
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(below_slot, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(below_slot, local);
-      current = false;
-    },
-
-    d(detaching) {
-      if (below_slot) below_slot.d(detaching);
-    }
-
-  };
-} // (53:1) <slot name='on_left' slot='on_left'/>  <slot name='on_right' slot='on_right'/>  <slot name='in_front' slot='in_front'/> </Container> 
-
-
-function create_on_left_slot(ctx) {
-  let current;
-  const on_left_slot_template =
-  /*#slots*/
-  ctx[10].on_left;
-  const on_left_slot = create_slot(on_left_slot_template, ctx,
-  /*$$scope*/
-  ctx[12], get_on_left_slot_context$1);
-  return {
-    c() {
-      if (on_left_slot) on_left_slot.c();
-    },
-
-    l(nodes) {
-      if (on_left_slot) on_left_slot.l(nodes);
-    },
-
-    m(target, anchor) {
-      if (on_left_slot) {
-        on_left_slot.m(target, anchor);
-      }
-
-      current = true;
-    },
-
-    p(ctx, dirty) {
-      if (on_left_slot) {
-        if (on_left_slot.p && dirty &
-        /*$$scope*/
-        4096) {
-          update_slot(on_left_slot, on_left_slot_template, ctx,
-          /*$$scope*/
-          ctx[12], dirty, get_on_left_slot_changes$1, get_on_left_slot_context$1);
-        }
-      }
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(on_left_slot, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(on_left_slot, local);
-      current = false;
-    },
-
-    d(detaching) {
-      if (on_left_slot) on_left_slot.d(detaching);
-    }
-
-  };
-} // (54:1) <slot name='on_right' slot='on_right'/>  <slot name='in_front' slot='in_front'/> </Container> 
-
-
-function create_on_right_slot(ctx) {
-  let current;
-  const on_right_slot_template =
-  /*#slots*/
-  ctx[10].on_right;
-  const on_right_slot = create_slot(on_right_slot_template, ctx,
-  /*$$scope*/
-  ctx[12], get_on_right_slot_context$1);
-  return {
-    c() {
-      if (on_right_slot) on_right_slot.c();
-    },
-
-    l(nodes) {
-      if (on_right_slot) on_right_slot.l(nodes);
-    },
-
-    m(target, anchor) {
-      if (on_right_slot) {
-        on_right_slot.m(target, anchor);
-      }
-
-      current = true;
-    },
-
-    p(ctx, dirty) {
-      if (on_right_slot) {
-        if (on_right_slot.p && dirty &
-        /*$$scope*/
-        4096) {
-          update_slot(on_right_slot, on_right_slot_template, ctx,
-          /*$$scope*/
-          ctx[12], dirty, get_on_right_slot_changes$1, get_on_right_slot_context$1);
-        }
-      }
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(on_right_slot, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(on_right_slot, local);
-      current = false;
-    },
-
-    d(detaching) {
-      if (on_right_slot) on_right_slot.d(detaching);
-    }
-
-  };
-} // (55:1) <slot name='in_front' slot='in_front'/> </Container> 
-
-
-function create_in_front_slot(ctx) {
-  let current;
-  const in_front_slot_template =
-  /*#slots*/
-  ctx[10].in_front;
-  const in_front_slot = create_slot(in_front_slot_template, ctx,
-  /*$$scope*/
-  ctx[12], get_in_front_slot_context$1);
-  return {
-    c() {
-      if (in_front_slot) in_front_slot.c();
-    },
-
-    l(nodes) {
-      if (in_front_slot) in_front_slot.l(nodes);
-    },
-
-    m(target, anchor) {
-      if (in_front_slot) {
-        in_front_slot.m(target, anchor);
-      }
-
-      current = true;
-    },
-
-    p(ctx, dirty) {
-      if (in_front_slot) {
-        if (in_front_slot.p && dirty &
-        /*$$scope*/
-        4096) {
-          update_slot(in_front_slot, in_front_slot_template, ctx,
-          /*$$scope*/
-          ctx[12], dirty, get_in_front_slot_changes$1, get_in_front_slot_context$1);
-        }
-      }
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(in_front_slot, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(in_front_slot, local);
-      current = false;
-    },
-
-    d(detaching) {
-      if (in_front_slot) in_front_slot.d(detaching);
-    }
-
-  };
-} // (38:0) <Container  bind:ref  { ...$$restProps }  class="{ row } { $$props.class || '' }"  style='   { style };   align-items: { align_bottom ? 'flex-end' : center_y ? 'center' : 'flex-start' };   justify-content: { align_right ? 'flex-end' : center_x ? 'center' : 'flex-start' };  '  spacing_x={ spacing } >
-
-
-function create_default_slot$8(ctx) {
-  let t0;
-  let t1;
-  let t2;
-  let t3;
-  let t4;
-  let t5;
-  let current;
-  const default_slot_template =
-  /*#slots*/
-  ctx[10].default;
-  const default_slot = create_slot(default_slot_template, ctx,
-  /*$$scope*/
-  ctx[12], null);
-  return {
-    c() {
-      t0 = space();
-      if (default_slot) default_slot.c();
-      t1 = space();
-      t2 = space();
-      t3 = space();
-      t4 = space();
-      t5 = space();
-    },
-
-    l(nodes) {
-      t0 = claim_space(nodes);
-      if (default_slot) default_slot.l(nodes);
-      t1 = claim_space(nodes);
-      t2 = claim_space(nodes);
-      t3 = claim_space(nodes);
-      t4 = claim_space(nodes);
-      t5 = claim_space(nodes);
-    },
-
-    m(target, anchor) {
-      insert(target, t0, anchor);
-
-      if (default_slot) {
-        default_slot.m(target, anchor);
-      }
-
-      insert(target, t1, anchor);
-      insert(target, t2, anchor);
-      insert(target, t3, anchor);
-      insert(target, t4, anchor);
-      insert(target, t5, anchor);
-      current = true;
-    },
-
-    p(ctx, dirty) {
-      if (default_slot) {
-        if (default_slot.p && dirty &
-        /*$$scope*/
-        4096) {
-          update_slot(default_slot, default_slot_template, ctx,
-          /*$$scope*/
-          ctx[12], dirty, null, null);
-        }
-      }
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(default_slot, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(default_slot, local);
-      current = false;
-    },
-
-    d(detaching) {
-      if (detaching) detach(t0);
-      if (default_slot) default_slot.d(detaching);
-      if (detaching) detach(t1);
-      if (detaching) detach(t2);
-      if (detaching) detach(t3);
-      if (detaching) detach(t4);
-      if (detaching) detach(t5);
-    }
-
-  };
-}
-
-function create_fragment$a(ctx) {
-  let container;
-  let updating_ref;
-  let current;
-  const container_spread_levels = [
-  /*$$restProps*/
-  ctx[8], {
-    class: "" + (
-    /*row*/
-    ctx[1] + " " + (
-    /*$$props*/
-    ctx[9].class || ""))
-  }, {
-    style: "\n\t\t" +
-    /*style*/
-    ctx[3] + ";\n\t\talign-items: " + (
-    /*align_bottom*/
-    ctx[7] ? "flex-end" :
-    /*center_y*/
-    ctx[6] ? "center" : "flex-start") + ";\n\t\tjustify-content: " + (
-    /*align_right*/
-    ctx[5] ? "flex-end" :
-    /*center_x*/
-    ctx[4] ? "center" : "flex-start") + ";\n\t"
-  }, {
-    spacing_x:
-    /*spacing*/
-    ctx[2]
-  }];
-
-  function container_ref_binding(value) {
-    /*container_ref_binding*/
-    ctx[11].call(null, value);
-  }
-
-  let container_props = {
-    $$slots: {
-      default: [create_default_slot$8],
-      in_front: [create_in_front_slot],
-      on_right: [create_on_right_slot],
-      on_left: [create_on_left_slot],
-      below: [create_below_slot],
-      above: [create_above_slot],
-      in_back: [create_in_back_slot]
-    },
-    $$scope: {
-      ctx
-    }
-  };
-
-  for (let i = 0; i < container_spread_levels.length; i += 1) {
-    container_props = assign(container_props, container_spread_levels[i]);
-  }
-
-  if (
-  /*ref*/
-  ctx[0] !== void 0) {
-    container_props.ref =
-    /*ref*/
-    ctx[0];
-  }
-
-  container = new Container({
-    props: container_props
-  });
-  binding_callbacks.push(() => bind(container, "ref", container_ref_binding));
-  return {
-    c() {
-      create_component(container.$$.fragment);
-    },
-
-    l(nodes) {
-      claim_component(container.$$.fragment, nodes);
-    },
-
-    m(target, anchor) {
-      mount_component(container, target, anchor);
-      current = true;
-    },
-
-    p(ctx, [dirty]) {
-      const container_changes = dirty &
-      /*$$restProps, row, $$props, style, align_bottom, center_y, align_right, center_x, spacing*/
-      1022 ? get_spread_update(container_spread_levels, [dirty &
-      /*$$restProps*/
-      256 && get_spread_object(
-      /*$$restProps*/
-      ctx[8]), dirty &
-      /*row, $$props*/
-      514 && {
-        class: "" + (
-        /*row*/
-        ctx[1] + " " + (
-        /*$$props*/
-        ctx[9].class || ""))
-      }, dirty &
-      /*style, align_bottom, center_y, align_right, center_x*/
-      248 && {
-        style: "\n\t\t" +
-        /*style*/
-        ctx[3] + ";\n\t\talign-items: " + (
-        /*align_bottom*/
-        ctx[7] ? "flex-end" :
-        /*center_y*/
-        ctx[6] ? "center" : "flex-start") + ";\n\t\tjustify-content: " + (
-        /*align_right*/
-        ctx[5] ? "flex-end" :
-        /*center_x*/
-        ctx[4] ? "center" : "flex-start") + ";\n\t"
-      }, dirty &
-      /*spacing*/
-      4 && {
-        spacing_x:
-        /*spacing*/
-        ctx[2]
-      }]) : {};
-
-      if (dirty &
-      /*$$scope*/
-      4096) {
-        container_changes.$$scope = {
-          dirty,
-          ctx
-        };
-      }
-
-      if (!updating_ref && dirty &
-      /*ref*/
-      1) {
-        updating_ref = true;
-        container_changes.ref =
-        /*ref*/
-        ctx[0];
-        add_flush_callback(() => updating_ref = false);
-      }
-
-      container.$set(container_changes);
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(container.$$.fragment, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(container.$$.fragment, local);
-      current = false;
-    },
-
-    d(detaching) {
-      destroy_component(container, detaching);
-    }
-
-  };
-}
-
-function instance$a($$self, $$props, $$invalidate) {
-  const omit_props_names = ["row", "ref", "spacing", "style", "center_x", "align_right", "center_y", "align_bottom"];
-  let $$restProps = compute_rest_props($$props, omit_props_names);
-  let {
-    $$slots: slots = {},
-    $$scope
-  } = $$props;
-  const row = "row_r6s9emb";
-  let {
-    ref = undefined
-  } = $$props;
-  let {
-    spacing = 0
-  } = $$props;
-  let {
-    style = ""
-  } = $$props;
-  let {
-    center_x = false
-  } = $$props;
-  let {
-    align_right = false
-  } = $$props;
-  let {
-    center_y = false
-  } = $$props;
-  let {
-    align_bottom = false
-  } = $$props;
-
-  function container_ref_binding(value) {
-    ref = value;
-    $$invalidate(0, ref);
-  }
-
-  $$self.$$set = $$new_props => {
-    $$invalidate(9, $$props = assign(assign({}, $$props), exclude_internal_props($$new_props)));
-    $$invalidate(8, $$restProps = compute_rest_props($$props, omit_props_names));
-    if ("ref" in $$new_props) $$invalidate(0, ref = $$new_props.ref);
-    if ("spacing" in $$new_props) $$invalidate(2, spacing = $$new_props.spacing);
-    if ("style" in $$new_props) $$invalidate(3, style = $$new_props.style);
-    if ("center_x" in $$new_props) $$invalidate(4, center_x = $$new_props.center_x);
-    if ("align_right" in $$new_props) $$invalidate(5, align_right = $$new_props.align_right);
-    if ("center_y" in $$new_props) $$invalidate(6, center_y = $$new_props.center_y);
-    if ("align_bottom" in $$new_props) $$invalidate(7, align_bottom = $$new_props.align_bottom);
-    if ("$$scope" in $$new_props) $$invalidate(12, $$scope = $$new_props.$$scope);
-  };
-
-  $$props = exclude_internal_props($$props);
-  return [ref, row, spacing, style, center_x, align_right, center_y, align_bottom, $$restProps, $$props, slots, container_ref_binding, $$scope];
-}
-
-class Row extends SvelteComponent {
-  constructor(options) {
-    super();
-    init(this, options, instance$a, create_fragment$a, safe_not_equal, {
-      row: 1,
-      ref: 0,
-      spacing: 2,
-      style: 3,
-      center_x: 4,
-      align_right: 5,
-      center_y: 6,
-      align_bottom: 7
-    });
-  }
-
-  get row() {
-    return this.$$.ctx[1];
-  }
-
-}
-
-var css_248z$5 = ".box_b15mj1xn > :not(.nearby_n1ymrolb) ~ :not(.nearby_n1ymrolb){visibility:hidden;}.box_b15mj1xn > :not(.nearby_n1ymrolb) ~ :not(.nearby_n1ymrolb):before{content:\"Error: Box may only contain one child.\";visibility:visible;background:red;color:white;display:block;font-weight:bold;padding:30px;}.box_b15mj1xn > :not(.nearby_n1ymrolb) ~ :not(.nearby_n1ymrolb) ~ :not(.nearby_n1ymrolb):before{display:none;}\n";
-styleInject(css_248z$5);
-
-/* src/Box.svelte generated by Svelte v3.32.0 */
-
-const get_in_front_slot_changes$2 = dirty => ({});
-
-const get_in_front_slot_context$2 = ctx => ({
-  slot: "in_front"
-});
-
-const get_on_right_slot_changes$2 = dirty => ({});
-
-const get_on_right_slot_context$2 = ctx => ({
-  slot: "on_right"
-});
-
-const get_on_left_slot_changes$2 = dirty => ({});
-
-const get_on_left_slot_context$2 = ctx => ({
-  slot: "on_left"
-});
-
-const get_below_slot_changes$2 = dirty => ({});
-
-const get_below_slot_context$2 = ctx => ({
-  slot: "below"
-});
-
-const get_above_slot_changes$2 = dirty => ({});
-
-const get_above_slot_context$2 = ctx => ({
-  slot: "above"
-});
-
-const get_in_back_slot_changes$2 = dirty => ({});
-
-const get_in_back_slot_context$2 = ctx => ({
-  slot: "in_back"
-}); // (34:1) <slot name='in_back' slot='in_back'/>  <slot/>  <slot name='above' slot='above'/>  <slot name='below' slot='below'/>  <slot name='on_left' slot='on_left'/>  <slot name='on_right' slot='on_right'/>  <slot name='in_front' slot='in_front'/> </Row> 
-
-
-function create_in_back_slot$1(ctx) {
-  let current;
-  const in_back_slot_template =
-  /*#slots*/
-  ctx[4].in_back;
-  const in_back_slot = create_slot(in_back_slot_template, ctx,
-  /*$$scope*/
-  ctx[6], get_in_back_slot_context$2);
-  return {
-    c() {
-      if (in_back_slot) in_back_slot.c();
-    },
-
-    l(nodes) {
-      if (in_back_slot) in_back_slot.l(nodes);
-    },
-
-    m(target, anchor) {
-      if (in_back_slot) {
-        in_back_slot.m(target, anchor);
-      }
-
-      current = true;
-    },
-
-    p(ctx, dirty) {
-      if (in_back_slot) {
-        if (in_back_slot.p && dirty &
-        /*$$scope*/
-        64) {
-          update_slot(in_back_slot, in_back_slot_template, ctx,
-          /*$$scope*/
-          ctx[6], dirty, get_in_back_slot_changes$2, get_in_back_slot_context$2);
-        }
-      }
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(in_back_slot, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(in_back_slot, local);
-      current = false;
-    },
-
-    d(detaching) {
-      if (in_back_slot) in_back_slot.d(detaching);
-    }
-
-  };
-} // (36:1) <slot name='above' slot='above'/>  <slot name='below' slot='below'/>  <slot name='on_left' slot='on_left'/>  <slot name='on_right' slot='on_right'/>  <slot name='in_front' slot='in_front'/> </Row> 
-
-
-function create_above_slot$1(ctx) {
-  let current;
-  const above_slot_template =
-  /*#slots*/
-  ctx[4].above;
-  const above_slot = create_slot(above_slot_template, ctx,
-  /*$$scope*/
-  ctx[6], get_above_slot_context$2);
-  return {
-    c() {
-      if (above_slot) above_slot.c();
-    },
-
-    l(nodes) {
-      if (above_slot) above_slot.l(nodes);
-    },
-
-    m(target, anchor) {
-      if (above_slot) {
-        above_slot.m(target, anchor);
-      }
-
-      current = true;
-    },
-
-    p(ctx, dirty) {
-      if (above_slot) {
-        if (above_slot.p && dirty &
-        /*$$scope*/
-        64) {
-          update_slot(above_slot, above_slot_template, ctx,
-          /*$$scope*/
-          ctx[6], dirty, get_above_slot_changes$2, get_above_slot_context$2);
-        }
-      }
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(above_slot, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(above_slot, local);
-      current = false;
-    },
-
-    d(detaching) {
-      if (above_slot) above_slot.d(detaching);
-    }
-
-  };
-} // (37:1) <slot name='below' slot='below'/>  <slot name='on_left' slot='on_left'/>  <slot name='on_right' slot='on_right'/>  <slot name='in_front' slot='in_front'/> </Row> 
-
-
-function create_below_slot$1(ctx) {
-  let current;
-  const below_slot_template =
-  /*#slots*/
-  ctx[4].below;
-  const below_slot = create_slot(below_slot_template, ctx,
-  /*$$scope*/
-  ctx[6], get_below_slot_context$2);
-  return {
-    c() {
-      if (below_slot) below_slot.c();
-    },
-
-    l(nodes) {
-      if (below_slot) below_slot.l(nodes);
-    },
-
-    m(target, anchor) {
-      if (below_slot) {
-        below_slot.m(target, anchor);
-      }
-
-      current = true;
-    },
-
-    p(ctx, dirty) {
-      if (below_slot) {
-        if (below_slot.p && dirty &
-        /*$$scope*/
-        64) {
-          update_slot(below_slot, below_slot_template, ctx,
-          /*$$scope*/
-          ctx[6], dirty, get_below_slot_changes$2, get_below_slot_context$2);
-        }
-      }
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(below_slot, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(below_slot, local);
-      current = false;
-    },
-
-    d(detaching) {
-      if (below_slot) below_slot.d(detaching);
-    }
-
-  };
-} // (38:1) <slot name='on_left' slot='on_left'/>  <slot name='on_right' slot='on_right'/>  <slot name='in_front' slot='in_front'/> </Row> 
-
-
-function create_on_left_slot$1(ctx) {
-  let current;
-  const on_left_slot_template =
-  /*#slots*/
-  ctx[4].on_left;
-  const on_left_slot = create_slot(on_left_slot_template, ctx,
-  /*$$scope*/
-  ctx[6], get_on_left_slot_context$2);
-  return {
-    c() {
-      if (on_left_slot) on_left_slot.c();
-    },
-
-    l(nodes) {
-      if (on_left_slot) on_left_slot.l(nodes);
-    },
-
-    m(target, anchor) {
-      if (on_left_slot) {
-        on_left_slot.m(target, anchor);
-      }
-
-      current = true;
-    },
-
-    p(ctx, dirty) {
-      if (on_left_slot) {
-        if (on_left_slot.p && dirty &
-        /*$$scope*/
-        64) {
-          update_slot(on_left_slot, on_left_slot_template, ctx,
-          /*$$scope*/
-          ctx[6], dirty, get_on_left_slot_changes$2, get_on_left_slot_context$2);
-        }
-      }
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(on_left_slot, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(on_left_slot, local);
-      current = false;
-    },
-
-    d(detaching) {
-      if (on_left_slot) on_left_slot.d(detaching);
-    }
-
-  };
-} // (39:1) <slot name='on_right' slot='on_right'/>  <slot name='in_front' slot='in_front'/> </Row> 
-
-
-function create_on_right_slot$1(ctx) {
-  let current;
-  const on_right_slot_template =
-  /*#slots*/
-  ctx[4].on_right;
-  const on_right_slot = create_slot(on_right_slot_template, ctx,
-  /*$$scope*/
-  ctx[6], get_on_right_slot_context$2);
-  return {
-    c() {
-      if (on_right_slot) on_right_slot.c();
-    },
-
-    l(nodes) {
-      if (on_right_slot) on_right_slot.l(nodes);
-    },
-
-    m(target, anchor) {
-      if (on_right_slot) {
-        on_right_slot.m(target, anchor);
-      }
-
-      current = true;
-    },
-
-    p(ctx, dirty) {
-      if (on_right_slot) {
-        if (on_right_slot.p && dirty &
-        /*$$scope*/
-        64) {
-          update_slot(on_right_slot, on_right_slot_template, ctx,
-          /*$$scope*/
-          ctx[6], dirty, get_on_right_slot_changes$2, get_on_right_slot_context$2);
-        }
-      }
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(on_right_slot, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(on_right_slot, local);
-      current = false;
-    },
-
-    d(detaching) {
-      if (on_right_slot) on_right_slot.d(detaching);
-    }
-
-  };
-} // (40:1) <slot name='in_front' slot='in_front'/> </Row> 
-
-
-function create_in_front_slot$1(ctx) {
-  let current;
-  const in_front_slot_template =
-  /*#slots*/
-  ctx[4].in_front;
-  const in_front_slot = create_slot(in_front_slot_template, ctx,
-  /*$$scope*/
-  ctx[6], get_in_front_slot_context$2);
-  return {
-    c() {
-      if (in_front_slot) in_front_slot.c();
-    },
-
-    l(nodes) {
-      if (in_front_slot) in_front_slot.l(nodes);
-    },
-
-    m(target, anchor) {
-      if (in_front_slot) {
-        in_front_slot.m(target, anchor);
-      }
-
-      current = true;
-    },
-
-    p(ctx, dirty) {
-      if (in_front_slot) {
-        if (in_front_slot.p && dirty &
-        /*$$scope*/
-        64) {
-          update_slot(in_front_slot, in_front_slot_template, ctx,
-          /*$$scope*/
-          ctx[6], dirty, get_in_front_slot_changes$2, get_in_front_slot_context$2);
-        }
-      }
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(in_front_slot, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(in_front_slot, local);
-      current = false;
-    },
-
-    d(detaching) {
-      if (in_front_slot) in_front_slot.d(detaching);
-    }
-
-  };
-} // (29:0) <Row  bind:ref  { ...$$restProps }  class="{ box } { $$props.class || '' }" >
-
-
-function create_default_slot$9(ctx) {
-  let t0;
-  let t1;
-  let t2;
-  let t3;
-  let t4;
-  let t5;
-  let current;
-  const default_slot_template =
-  /*#slots*/
-  ctx[4].default;
-  const default_slot = create_slot(default_slot_template, ctx,
-  /*$$scope*/
-  ctx[6], null);
-  return {
-    c() {
-      t0 = space();
-      if (default_slot) default_slot.c();
-      t1 = space();
-      t2 = space();
-      t3 = space();
-      t4 = space();
-      t5 = space();
-    },
-
-    l(nodes) {
-      t0 = claim_space(nodes);
-      if (default_slot) default_slot.l(nodes);
-      t1 = claim_space(nodes);
-      t2 = claim_space(nodes);
-      t3 = claim_space(nodes);
-      t4 = claim_space(nodes);
-      t5 = claim_space(nodes);
-    },
-
-    m(target, anchor) {
-      insert(target, t0, anchor);
-
-      if (default_slot) {
-        default_slot.m(target, anchor);
-      }
-
-      insert(target, t1, anchor);
-      insert(target, t2, anchor);
-      insert(target, t3, anchor);
-      insert(target, t4, anchor);
-      insert(target, t5, anchor);
-      current = true;
-    },
-
-    p(ctx, dirty) {
-      if (default_slot) {
-        if (default_slot.p && dirty &
-        /*$$scope*/
-        64) {
-          update_slot(default_slot, default_slot_template, ctx,
-          /*$$scope*/
-          ctx[6], dirty, null, null);
-        }
-      }
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(default_slot, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(default_slot, local);
-      current = false;
-    },
-
-    d(detaching) {
-      if (detaching) detach(t0);
-      if (default_slot) default_slot.d(detaching);
-      if (detaching) detach(t1);
-      if (detaching) detach(t2);
-      if (detaching) detach(t3);
-      if (detaching) detach(t4);
-      if (detaching) detach(t5);
-    }
-
-  };
-}
-
-function create_fragment$b(ctx) {
-  let row;
-  let updating_ref;
-  let current;
-  const row_spread_levels = [
-  /*$$restProps*/
-  ctx[2], {
-    class: "" + (
-    /*box*/
-    ctx[1] + " " + (
-    /*$$props*/
-    ctx[3].class || ""))
-  }];
-
-  function row_ref_binding(value) {
-    /*row_ref_binding*/
-    ctx[5].call(null, value);
-  }
-
-  let row_props = {
-    $$slots: {
-      default: [create_default_slot$9],
-      in_front: [create_in_front_slot$1],
-      on_right: [create_on_right_slot$1],
-      on_left: [create_on_left_slot$1],
-      below: [create_below_slot$1],
-      above: [create_above_slot$1],
-      in_back: [create_in_back_slot$1]
-    },
-    $$scope: {
-      ctx
-    }
-  };
-
-  for (let i = 0; i < row_spread_levels.length; i += 1) {
-    row_props = assign(row_props, row_spread_levels[i]);
-  }
-
-  if (
-  /*ref*/
-  ctx[0] !== void 0) {
-    row_props.ref =
-    /*ref*/
-    ctx[0];
-  }
-
-  row = new Row({
-    props: row_props
-  });
-  binding_callbacks.push(() => bind(row, "ref", row_ref_binding));
-  return {
-    c() {
-      create_component(row.$$.fragment);
-    },
-
-    l(nodes) {
-      claim_component(row.$$.fragment, nodes);
-    },
-
-    m(target, anchor) {
-      mount_component(row, target, anchor);
-      current = true;
-    },
-
-    p(ctx, [dirty]) {
-      const row_changes = dirty &
-      /*$$restProps, box, $$props*/
-      14 ? get_spread_update(row_spread_levels, [dirty &
-      /*$$restProps*/
-      4 && get_spread_object(
-      /*$$restProps*/
-      ctx[2]), dirty &
-      /*box, $$props*/
-      10 && {
-        class: "" + (
-        /*box*/
-        ctx[1] + " " + (
-        /*$$props*/
-        ctx[3].class || ""))
-      }]) : {};
-
-      if (dirty &
-      /*$$scope*/
-      64) {
-        row_changes.$$scope = {
-          dirty,
-          ctx
-        };
-      }
-
-      if (!updating_ref && dirty &
-      /*ref*/
-      1) {
-        updating_ref = true;
-        row_changes.ref =
-        /*ref*/
-        ctx[0];
-        add_flush_callback(() => updating_ref = false);
-      }
-
-      row.$set(row_changes);
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(row.$$.fragment, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(row.$$.fragment, local);
-      current = false;
-    },
-
-    d(detaching) {
-      destroy_component(row, detaching);
-    }
-
-  };
-}
-
-function instance$b($$self, $$props, $$invalidate) {
-  const omit_props_names = ["ref"];
-  let $$restProps = compute_rest_props($$props, omit_props_names);
-  let {
-    $$slots: slots = {},
-    $$scope
-  } = $$props;
-  let {
-    ref = undefined
-  } = $$props;
-  const box = "box_b15mj1xn";
-
-  function row_ref_binding(value) {
-    ref = value;
-    $$invalidate(0, ref);
-  }
-
-  $$self.$$set = $$new_props => {
     $$invalidate(3, $$props = assign(assign({}, $$props), exclude_internal_props($$new_props)));
-    $$invalidate(2, $$restProps = compute_rest_props($$props, omit_props_names));
+    $$invalidate(4, $$restProps = compute_rest_props($$props, omit_props_names));
     if ("ref" in $$new_props) $$invalidate(0, ref = $$new_props.ref);
-    if ("$$scope" in $$new_props) $$invalidate(6, $$scope = $$new_props.$$scope);
+    if ("style" in $$new_props) $$invalidate(1, style = $$new_props.style);
+    if ("$$scope" in $$new_props) $$invalidate(7, $$scope = $$new_props.$$scope);
   };
 
   $$props = exclude_internal_props($$props);
-  return [ref, box, $$restProps, $$props, slots, row_ref_binding, $$scope];
+  return [ref, style, className, $$props, $$restProps, slots, element_1_ref_binding, $$scope];
 }
 
 class Box extends SvelteComponent {
   constructor(options) {
     super();
-    init(this, options, instance$b, create_fragment$b, safe_not_equal, {
-      ref: 0
+    init(this, options, instance$2, create_fragment$2, safe_not_equal, {
+      ref: 0,
+      style: 1
     });
   }
 
@@ -4259,7 +1096,7 @@ class Box extends SvelteComponent {
 
 /* src/Aspect_ratio.svelte generated by Svelte v3.32.0 */
 
-function create_in_back_slot$2(ctx) {
+function create_in_back_slot(ctx) {
 	let div;
 	let current;
 	const default_slot_template = /*#slots*/ ctx[3].default;
@@ -4313,7 +1150,7 @@ function create_in_back_slot$2(ctx) {
 	};
 }
 
-function create_fragment$c(ctx) {
+function create_fragment$3(ctx) {
 	let box;
 	let current;
 
@@ -4321,7 +1158,7 @@ function create_fragment$c(ctx) {
 			props: {
 				width: fill,
 				style: "padding-bottom: " + /*height_percent*/ ctx[0] + "%",
-				$$slots: { in_back: [create_in_back_slot$2] },
+				$$slots: { in_back: [create_in_back_slot] },
 				$$scope: { ctx }
 			}
 		});
@@ -4362,7 +1199,7 @@ function create_fragment$c(ctx) {
 	};
 }
 
-function instance$c($$self, $$props, $$invalidate) {
+function instance$3($$self, $$props, $$invalidate) {
 	let { $$slots: slots = {}, $$scope } = $$props;
 	let { w = 0 } = $$props;
 	let { h = 0 } = $$props;
@@ -4386,707 +1223,431 @@ function instance$c($$self, $$props, $$invalidate) {
 class Aspect_ratio extends SvelteComponent {
 	constructor(options) {
 		super();
-		init(this, options, instance$c, create_fragment$c, safe_not_equal, { w: 1, h: 2 });
+		init(this, options, instance$3, create_fragment$3, safe_not_equal, { w: 1, h: 2 });
 	}
 }
 
-var css_248z$6 = ".column_c13krpcw{-webkit-flex-direction:column;-ms-flex-direction:column;flex-direction:column;}.column_c13krpcw > .element_ekolm46[data-height-base=fill]{-webkit-flex-basis:0;-ms-flex-preferred-size:0;flex-basis:0;-webkit-box-flex:var(--height-base-value);-webkit-flex-grow:var(--height-base-value);-ms-flex-positive:var(--height-base-value);flex-grow:var(--height-base-value);}.column_c13krpcw > .element_ekolm46[data-width-base=fill]{width:100%;}.column_c13krpcw > .element_ekolm46[data-height-base=content]{-webkit-flex-basis:auto;-ms-flex-preferred-size:auto;flex-basis:auto;-webkit-box-flex:0;-webkit-flex-grow:0;-ms-flex-positive:0;flex-grow:0;}.column_c13krpcw > .element_ekolm46[data-width-base=content]{width:auto;}\n";
-styleInject(css_248z$6);
+/* src/Layout.svelte generated by Svelte v3.32.0 */
+
+function create_default_slot_1(ctx) {
+	let current;
+	const default_slot_template = /*#slots*/ ctx[9].default;
+	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[11], null);
+
+	return {
+		c() {
+			if (default_slot) default_slot.c();
+		},
+		l(nodes) {
+			if (default_slot) default_slot.l(nodes);
+		},
+		m(target, anchor) {
+			if (default_slot) {
+				default_slot.m(target, anchor);
+			}
+
+			current = true;
+		},
+		p(ctx, dirty) {
+			if (default_slot) {
+				if (default_slot.p && dirty & /*$$scope*/ 2048) {
+					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[11], dirty, null, null);
+				}
+			}
+		},
+		i(local) {
+			if (current) return;
+			transition_in(default_slot, local);
+			current = true;
+		},
+		o(local) {
+			transition_out(default_slot, local);
+			current = false;
+		},
+		d(detaching) {
+			if (default_slot) default_slot.d(detaching);
+		}
+	};
+}
+
+// (16:0) <Element  bind:ref  { ...$$restProps } >
+function create_default_slot$2(ctx) {
+	let div;
+	let spacing_context_1;
+	let div_class_value;
+	let div_style_value;
+	let current;
+	const spacing_context_1_spread_levels = [/*spacings*/ ctx[3]];
+
+	let spacing_context_1_props = {
+		$$slots: { default: [create_default_slot_1] },
+		$$scope: { ctx }
+	};
+
+	for (let i = 0; i < spacing_context_1_spread_levels.length; i += 1) {
+		spacing_context_1_props = assign(spacing_context_1_props, spacing_context_1_spread_levels[i]);
+	}
+
+	spacing_context_1 = new Spacing_context({ props: spacing_context_1_props });
+
+	return {
+		c() {
+			div = element("div");
+			create_component(spacing_context_1.$$.fragment);
+			this.h();
+		},
+		l(nodes) {
+			div = claim_element(nodes, "DIV", { class: true, style: true });
+			var div_nodes = children(div);
+			claim_component(spacing_context_1.$$.fragment, div_nodes);
+			div_nodes.forEach(detach);
+			this.h();
+		},
+		h() {
+			attr(div, "class", div_class_value = "" + (/*layout_class*/ ctx[1] + " " + layout));
+			attr(div, "style", div_style_value = "height: 100%; " + /*layout_style*/ ctx[2](/*$$props*/ ctx[5]) + " " + layout_style(/*$$props*/ ctx[5]) + " " + spacing_context(/*spacings*/ ctx[3]));
+		},
+		m(target, anchor) {
+			insert(target, div, anchor);
+			mount_component(spacing_context_1, div, null);
+			current = true;
+		},
+		p(ctx, dirty) {
+			const spacing_context_1_changes = (dirty & /*spacings*/ 8)
+			? get_spread_update(spacing_context_1_spread_levels, [get_spread_object(/*spacings*/ ctx[3])])
+			: {};
+
+			if (dirty & /*$$scope*/ 2048) {
+				spacing_context_1_changes.$$scope = { dirty, ctx };
+			}
+
+			spacing_context_1.$set(spacing_context_1_changes);
+
+			if (!current || dirty & /*layout_class*/ 2 && div_class_value !== (div_class_value = "" + (/*layout_class*/ ctx[1] + " " + layout))) {
+				attr(div, "class", div_class_value);
+			}
+
+			if (!current || dirty & /*layout_style, $$props, spacings*/ 44 && div_style_value !== (div_style_value = "height: 100%; " + /*layout_style*/ ctx[2](/*$$props*/ ctx[5]) + " " + layout_style(/*$$props*/ ctx[5]) + " " + spacing_context(/*spacings*/ ctx[3]))) {
+				attr(div, "style", div_style_value);
+			}
+		},
+		i(local) {
+			if (current) return;
+			transition_in(spacing_context_1.$$.fragment, local);
+			current = true;
+		},
+		o(local) {
+			transition_out(spacing_context_1.$$.fragment, local);
+			current = false;
+		},
+		d(detaching) {
+			if (detaching) detach(div);
+			destroy_component(spacing_context_1);
+		}
+	};
+}
+
+function create_fragment$4(ctx) {
+	let element_1;
+	let updating_ref;
+	let current;
+	const element_1_spread_levels = [/*$$restProps*/ ctx[4]];
+
+	function element_1_ref_binding(value) {
+		/*element_1_ref_binding*/ ctx[10].call(null, value);
+	}
+
+	let element_1_props = {
+		$$slots: { default: [create_default_slot$2] },
+		$$scope: { ctx }
+	};
+
+	for (let i = 0; i < element_1_spread_levels.length; i += 1) {
+		element_1_props = assign(element_1_props, element_1_spread_levels[i]);
+	}
+
+	if (/*ref*/ ctx[0] !== void 0) {
+		element_1_props.ref = /*ref*/ ctx[0];
+	}
+
+	element_1 = new Element({ props: element_1_props });
+	binding_callbacks.push(() => bind(element_1, "ref", element_1_ref_binding));
+
+	return {
+		c() {
+			create_component(element_1.$$.fragment);
+		},
+		l(nodes) {
+			claim_component(element_1.$$.fragment, nodes);
+		},
+		m(target, anchor) {
+			mount_component(element_1, target, anchor);
+			current = true;
+		},
+		p(ctx, [dirty]) {
+			const element_1_changes = (dirty & /*$$restProps*/ 16)
+			? get_spread_update(element_1_spread_levels, [get_spread_object(/*$$restProps*/ ctx[4])])
+			: {};
+
+			if (dirty & /*$$scope, layout_class, layout_style, $$props, spacings*/ 2094) {
+				element_1_changes.$$scope = { dirty, ctx };
+			}
+
+			if (!updating_ref && dirty & /*ref*/ 1) {
+				updating_ref = true;
+				element_1_changes.ref = /*ref*/ ctx[0];
+				add_flush_callback(() => updating_ref = false);
+			}
+
+			element_1.$set(element_1_changes);
+		},
+		i(local) {
+			if (current) return;
+			transition_in(element_1.$$.fragment, local);
+			current = true;
+		},
+		o(local) {
+			transition_out(element_1.$$.fragment, local);
+			current = false;
+		},
+		d(detaching) {
+			destroy_component(element_1, detaching);
+		}
+	};
+}
+
+function instance$4($$self, $$props, $$invalidate) {
+	let spacings;
+	const omit_props_names = ["ref","layout_class","layout_style","spacing","spacing_x","spacing_y"];
+	let $$restProps = compute_rest_props($$props, omit_props_names);
+	let { $$slots: slots = {}, $$scope } = $$props;
+	let { ref } = $$props;
+	let { layout_class } = $$props;
+	let { layout_style } = $$props;
+	let { spacing = 0 } = $$props;
+	let { spacing_x = 0 } = $$props;
+	let { spacing_y = 0 } = $$props;
+
+	function element_1_ref_binding(value) {
+		ref = value;
+		$$invalidate(0, ref);
+	}
+
+	$$self.$$set = $$new_props => {
+		$$invalidate(5, $$props = assign(assign({}, $$props), exclude_internal_props($$new_props)));
+		$$invalidate(4, $$restProps = compute_rest_props($$props, omit_props_names));
+		if ("ref" in $$new_props) $$invalidate(0, ref = $$new_props.ref);
+		if ("layout_class" in $$new_props) $$invalidate(1, layout_class = $$new_props.layout_class);
+		if ("layout_style" in $$new_props) $$invalidate(2, layout_style = $$new_props.layout_style);
+		if ("spacing" in $$new_props) $$invalidate(6, spacing = $$new_props.spacing);
+		if ("spacing_x" in $$new_props) $$invalidate(7, spacing_x = $$new_props.spacing_x);
+		if ("spacing_y" in $$new_props) $$invalidate(8, spacing_y = $$new_props.spacing_y);
+		if ("$$scope" in $$new_props) $$invalidate(11, $$scope = $$new_props.$$scope);
+	};
+
+	$$self.$$.update = () => {
+		if ($$self.$$.dirty & /*spacing_x, spacing, spacing_y*/ 448) {
+			 $$invalidate(3, spacings = {
+				x: spacing_x || spacing,
+				y: spacing_y || spacing
+			});
+		}
+	};
+
+	$$props = exclude_internal_props($$props);
+
+	return [
+		ref,
+		layout_class,
+		layout_style,
+		spacings,
+		$$restProps,
+		$$props,
+		spacing,
+		spacing_x,
+		spacing_y,
+		slots,
+		element_1_ref_binding,
+		$$scope
+	];
+}
+
+class Layout extends SvelteComponent {
+	constructor(options) {
+		super();
+
+		init(this, options, instance$4, create_fragment$4, safe_not_equal, {
+			ref: 0,
+			layout_class: 1,
+			layout_style: 2,
+			spacing: 6,
+			spacing_x: 7,
+			spacing_y: 8
+		});
+	}
+}
 
 /* src/Column.svelte generated by Svelte v3.32.0 */
 
-const get_in_front_slot_changes$3 = dirty => ({});
-
-const get_in_front_slot_context$3 = ctx => ({
-  slot: "in_front"
-});
-
-const get_on_right_slot_changes$3 = dirty => ({});
-
-const get_on_right_slot_context$3 = ctx => ({
-  slot: "on_right"
-});
-
-const get_on_left_slot_changes$3 = dirty => ({});
-
-const get_on_left_slot_context$3 = ctx => ({
-  slot: "on_left"
-});
-
-const get_below_slot_changes$3 = dirty => ({});
-
-const get_below_slot_context$3 = ctx => ({
-  slot: "below"
-});
-
-const get_above_slot_changes$3 = dirty => ({});
-
-const get_above_slot_context$3 = ctx => ({
-  slot: "above"
-});
-
-const get_in_back_slot_changes$3 = dirty => ({});
-
-const get_in_back_slot_context$3 = ctx => ({
-  slot: "in_back"
-}); // (49:1) <slot name='in_back' slot='in_back'/>  <slot/>  <slot name='above' slot='above'/>  <slot name='below' slot='below'/>  <slot name='on_left' slot='on_left'/>  <slot name='on_right' slot='on_right'/>  <slot name='in_front' slot='in_front'/> </Container> 
-
-
-function create_in_back_slot$3(ctx) {
-  let current;
-  const in_back_slot_template =
-  /*#slots*/
-  ctx[10].in_back;
-  const in_back_slot = create_slot(in_back_slot_template, ctx,
-  /*$$scope*/
-  ctx[12], get_in_back_slot_context$3);
-  return {
-    c() {
-      if (in_back_slot) in_back_slot.c();
-    },
-
-    l(nodes) {
-      if (in_back_slot) in_back_slot.l(nodes);
-    },
-
-    m(target, anchor) {
-      if (in_back_slot) {
-        in_back_slot.m(target, anchor);
-      }
-
-      current = true;
-    },
-
-    p(ctx, dirty) {
-      if (in_back_slot) {
-        if (in_back_slot.p && dirty &
-        /*$$scope*/
-        4096) {
-          update_slot(in_back_slot, in_back_slot_template, ctx,
-          /*$$scope*/
-          ctx[12], dirty, get_in_back_slot_changes$3, get_in_back_slot_context$3);
-        }
-      }
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(in_back_slot, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(in_back_slot, local);
-      current = false;
-    },
-
-    d(detaching) {
-      if (in_back_slot) in_back_slot.d(detaching);
-    }
-
-  };
-} // (51:1) <slot name='above' slot='above'/>  <slot name='below' slot='below'/>  <slot name='on_left' slot='on_left'/>  <slot name='on_right' slot='on_right'/>  <slot name='in_front' slot='in_front'/> </Container> 
-
-
-function create_above_slot$2(ctx) {
-  let current;
-  const above_slot_template =
-  /*#slots*/
-  ctx[10].above;
-  const above_slot = create_slot(above_slot_template, ctx,
-  /*$$scope*/
-  ctx[12], get_above_slot_context$3);
-  return {
-    c() {
-      if (above_slot) above_slot.c();
-    },
-
-    l(nodes) {
-      if (above_slot) above_slot.l(nodes);
-    },
-
-    m(target, anchor) {
-      if (above_slot) {
-        above_slot.m(target, anchor);
-      }
-
-      current = true;
-    },
-
-    p(ctx, dirty) {
-      if (above_slot) {
-        if (above_slot.p && dirty &
-        /*$$scope*/
-        4096) {
-          update_slot(above_slot, above_slot_template, ctx,
-          /*$$scope*/
-          ctx[12], dirty, get_above_slot_changes$3, get_above_slot_context$3);
-        }
-      }
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(above_slot, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(above_slot, local);
-      current = false;
-    },
-
-    d(detaching) {
-      if (above_slot) above_slot.d(detaching);
-    }
-
-  };
-} // (52:1) <slot name='below' slot='below'/>  <slot name='on_left' slot='on_left'/>  <slot name='on_right' slot='on_right'/>  <slot name='in_front' slot='in_front'/> </Container> 
-
-
-function create_below_slot$2(ctx) {
-  let current;
-  const below_slot_template =
-  /*#slots*/
-  ctx[10].below;
-  const below_slot = create_slot(below_slot_template, ctx,
-  /*$$scope*/
-  ctx[12], get_below_slot_context$3);
-  return {
-    c() {
-      if (below_slot) below_slot.c();
-    },
-
-    l(nodes) {
-      if (below_slot) below_slot.l(nodes);
-    },
-
-    m(target, anchor) {
-      if (below_slot) {
-        below_slot.m(target, anchor);
-      }
-
-      current = true;
-    },
-
-    p(ctx, dirty) {
-      if (below_slot) {
-        if (below_slot.p && dirty &
-        /*$$scope*/
-        4096) {
-          update_slot(below_slot, below_slot_template, ctx,
-          /*$$scope*/
-          ctx[12], dirty, get_below_slot_changes$3, get_below_slot_context$3);
-        }
-      }
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(below_slot, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(below_slot, local);
-      current = false;
-    },
-
-    d(detaching) {
-      if (below_slot) below_slot.d(detaching);
-    }
-
-  };
-} // (53:1) <slot name='on_left' slot='on_left'/>  <slot name='on_right' slot='on_right'/>  <slot name='in_front' slot='in_front'/> </Container> 
-
-
-function create_on_left_slot$2(ctx) {
-  let current;
-  const on_left_slot_template =
-  /*#slots*/
-  ctx[10].on_left;
-  const on_left_slot = create_slot(on_left_slot_template, ctx,
-  /*$$scope*/
-  ctx[12], get_on_left_slot_context$3);
-  return {
-    c() {
-      if (on_left_slot) on_left_slot.c();
-    },
-
-    l(nodes) {
-      if (on_left_slot) on_left_slot.l(nodes);
-    },
-
-    m(target, anchor) {
-      if (on_left_slot) {
-        on_left_slot.m(target, anchor);
-      }
-
-      current = true;
-    },
-
-    p(ctx, dirty) {
-      if (on_left_slot) {
-        if (on_left_slot.p && dirty &
-        /*$$scope*/
-        4096) {
-          update_slot(on_left_slot, on_left_slot_template, ctx,
-          /*$$scope*/
-          ctx[12], dirty, get_on_left_slot_changes$3, get_on_left_slot_context$3);
-        }
-      }
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(on_left_slot, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(on_left_slot, local);
-      current = false;
-    },
-
-    d(detaching) {
-      if (on_left_slot) on_left_slot.d(detaching);
-    }
-
-  };
-} // (54:1) <slot name='on_right' slot='on_right'/>  <slot name='in_front' slot='in_front'/> </Container> 
-
-
-function create_on_right_slot$2(ctx) {
-  let current;
-  const on_right_slot_template =
-  /*#slots*/
-  ctx[10].on_right;
-  const on_right_slot = create_slot(on_right_slot_template, ctx,
-  /*$$scope*/
-  ctx[12], get_on_right_slot_context$3);
-  return {
-    c() {
-      if (on_right_slot) on_right_slot.c();
-    },
-
-    l(nodes) {
-      if (on_right_slot) on_right_slot.l(nodes);
-    },
-
-    m(target, anchor) {
-      if (on_right_slot) {
-        on_right_slot.m(target, anchor);
-      }
-
-      current = true;
-    },
-
-    p(ctx, dirty) {
-      if (on_right_slot) {
-        if (on_right_slot.p && dirty &
-        /*$$scope*/
-        4096) {
-          update_slot(on_right_slot, on_right_slot_template, ctx,
-          /*$$scope*/
-          ctx[12], dirty, get_on_right_slot_changes$3, get_on_right_slot_context$3);
-        }
-      }
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(on_right_slot, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(on_right_slot, local);
-      current = false;
-    },
-
-    d(detaching) {
-      if (on_right_slot) on_right_slot.d(detaching);
-    }
-
-  };
-} // (55:1) <slot name='in_front' slot='in_front'/> </Container> 
-
-
-function create_in_front_slot$2(ctx) {
-  let current;
-  const in_front_slot_template =
-  /*#slots*/
-  ctx[10].in_front;
-  const in_front_slot = create_slot(in_front_slot_template, ctx,
-  /*$$scope*/
-  ctx[12], get_in_front_slot_context$3);
-  return {
-    c() {
-      if (in_front_slot) in_front_slot.c();
-    },
-
-    l(nodes) {
-      if (in_front_slot) in_front_slot.l(nodes);
-    },
-
-    m(target, anchor) {
-      if (in_front_slot) {
-        in_front_slot.m(target, anchor);
-      }
-
-      current = true;
-    },
-
-    p(ctx, dirty) {
-      if (in_front_slot) {
-        if (in_front_slot.p && dirty &
-        /*$$scope*/
-        4096) {
-          update_slot(in_front_slot, in_front_slot_template, ctx,
-          /*$$scope*/
-          ctx[12], dirty, get_in_front_slot_changes$3, get_in_front_slot_context$3);
-        }
-      }
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(in_front_slot, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(in_front_slot, local);
-      current = false;
-    },
-
-    d(detaching) {
-      if (in_front_slot) in_front_slot.d(detaching);
-    }
-
-  };
-} // (38:0) <Container  bind:ref  { ...$$restProps }  class="{ column } { $$props.class || '' }"  style='   { style };   justify-content: { align_bottom ? 'flex-end' : center_y ? 'center' : 'flex-start' };   align-items: { align_right ? 'flex-end' : center_x ? 'center' : 'flex-start' };  '  spacing_y={ spacing } >
-
-
-function create_default_slot$a(ctx) {
-  let t0;
-  let t1;
-  let t2;
-  let t3;
-  let t4;
-  let t5;
-  let current;
-  const default_slot_template =
-  /*#slots*/
-  ctx[10].default;
-  const default_slot = create_slot(default_slot_template, ctx,
-  /*$$scope*/
-  ctx[12], null);
-  return {
-    c() {
-      t0 = space();
-      if (default_slot) default_slot.c();
-      t1 = space();
-      t2 = space();
-      t3 = space();
-      t4 = space();
-      t5 = space();
-    },
-
-    l(nodes) {
-      t0 = claim_space(nodes);
-      if (default_slot) default_slot.l(nodes);
-      t1 = claim_space(nodes);
-      t2 = claim_space(nodes);
-      t3 = claim_space(nodes);
-      t4 = claim_space(nodes);
-      t5 = claim_space(nodes);
-    },
-
-    m(target, anchor) {
-      insert(target, t0, anchor);
-
-      if (default_slot) {
-        default_slot.m(target, anchor);
-      }
-
-      insert(target, t1, anchor);
-      insert(target, t2, anchor);
-      insert(target, t3, anchor);
-      insert(target, t4, anchor);
-      insert(target, t5, anchor);
-      current = true;
-    },
-
-    p(ctx, dirty) {
-      if (default_slot) {
-        if (default_slot.p && dirty &
-        /*$$scope*/
-        4096) {
-          update_slot(default_slot, default_slot_template, ctx,
-          /*$$scope*/
-          ctx[12], dirty, null, null);
-        }
-      }
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(default_slot, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(default_slot, local);
-      current = false;
-    },
-
-    d(detaching) {
-      if (detaching) detach(t0);
-      if (default_slot) default_slot.d(detaching);
-      if (detaching) detach(t1);
-      if (detaching) detach(t2);
-      if (detaching) detach(t3);
-      if (detaching) detach(t4);
-      if (detaching) detach(t5);
-    }
-
-  };
+function create_default_slot$3(ctx) {
+	let current;
+	const default_slot_template = /*#slots*/ ctx[3].default;
+	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[5], null);
+
+	return {
+		c() {
+			if (default_slot) default_slot.c();
+		},
+		l(nodes) {
+			if (default_slot) default_slot.l(nodes);
+		},
+		m(target, anchor) {
+			if (default_slot) {
+				default_slot.m(target, anchor);
+			}
+
+			current = true;
+		},
+		p(ctx, dirty) {
+			if (default_slot) {
+				if (default_slot.p && dirty & /*$$scope*/ 32) {
+					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[5], dirty, null, null);
+				}
+			}
+		},
+		i(local) {
+			if (current) return;
+			transition_in(default_slot, local);
+			current = true;
+		},
+		o(local) {
+			transition_out(default_slot, local);
+			current = false;
+		},
+		d(detaching) {
+			if (default_slot) default_slot.d(detaching);
+		}
+	};
 }
 
-function create_fragment$d(ctx) {
-  let container;
-  let updating_ref;
-  let current;
-  const container_spread_levels = [
-  /*$$restProps*/
-  ctx[8], {
-    class: "" + (
-    /*column*/
-    ctx[7] + " " + (
-    /*$$props*/
-    ctx[9].class || ""))
-  }, {
-    style: "\n\t\t" +
-    /*style*/
-    ctx[2] + ";\n\t\tjustify-content: " + (
-    /*align_bottom*/
-    ctx[6] ? "flex-end" :
-    /*center_y*/
-    ctx[5] ? "center" : "flex-start") + ";\n\t\talign-items: " + (
-    /*align_right*/
-    ctx[4] ? "flex-end" :
-    /*center_x*/
-    ctx[3] ? "center" : "flex-start") + ";\n\t"
-  }, {
-    spacing_y:
-    /*spacing*/
-    ctx[1]
-  }];
+function create_fragment$5(ctx) {
+	let layout;
+	let updating_ref;
+	let current;
 
-  function container_ref_binding(value) {
-    /*container_ref_binding*/
-    ctx[11].call(null, value);
-  }
+	const layout_spread_levels = [
+		/*rest_props*/ ctx[1],
+		{ class: /*class_name*/ ctx[2] },
+		{ layout_class: layout_y },
+		{ layout_style: layout_y_style }
+	];
 
-  let container_props = {
-    $$slots: {
-      default: [create_default_slot$a],
-      in_front: [create_in_front_slot$2],
-      on_right: [create_on_right_slot$2],
-      on_left: [create_on_left_slot$2],
-      below: [create_below_slot$2],
-      above: [create_above_slot$2],
-      in_back: [create_in_back_slot$3]
-    },
-    $$scope: {
-      ctx
-    }
-  };
+	function layout_ref_binding(value) {
+		/*layout_ref_binding*/ ctx[4].call(null, value);
+	}
 
-  for (let i = 0; i < container_spread_levels.length; i += 1) {
-    container_props = assign(container_props, container_spread_levels[i]);
-  }
+	let layout_props = {
+		$$slots: { default: [create_default_slot$3] },
+		$$scope: { ctx }
+	};
 
-  if (
-  /*ref*/
-  ctx[0] !== void 0) {
-    container_props.ref =
-    /*ref*/
-    ctx[0];
-  }
+	for (let i = 0; i < layout_spread_levels.length; i += 1) {
+		layout_props = assign(layout_props, layout_spread_levels[i]);
+	}
 
-  container = new Container({
-    props: container_props
-  });
-  binding_callbacks.push(() => bind(container, "ref", container_ref_binding));
-  return {
-    c() {
-      create_component(container.$$.fragment);
-    },
+	if (/*ref*/ ctx[0] !== void 0) {
+		layout_props.ref = /*ref*/ ctx[0];
+	}
 
-    l(nodes) {
-      claim_component(container.$$.fragment, nodes);
-    },
+	layout = new Layout({ props: layout_props });
+	binding_callbacks.push(() => bind(layout, "ref", layout_ref_binding));
 
-    m(target, anchor) {
-      mount_component(container, target, anchor);
-      current = true;
-    },
+	return {
+		c() {
+			create_component(layout.$$.fragment);
+		},
+		l(nodes) {
+			claim_component(layout.$$.fragment, nodes);
+		},
+		m(target, anchor) {
+			mount_component(layout, target, anchor);
+			current = true;
+		},
+		p(ctx, [dirty]) {
+			const layout_changes = (dirty & /*rest_props, class_name, layout_y, layout_y_style*/ 6)
+			? get_spread_update(layout_spread_levels, [
+					dirty & /*rest_props*/ 2 && get_spread_object(/*rest_props*/ ctx[1]),
+					dirty & /*class_name*/ 4 && { class: /*class_name*/ ctx[2] },
+					dirty & /*layout_y*/ 0 && { layout_class: layout_y },
+					dirty & /*layout_y_style*/ 0 && { layout_style: layout_y_style }
+				])
+			: {};
 
-    p(ctx, [dirty]) {
-      const container_changes = dirty &
-      /*$$restProps, column, $$props, style, align_bottom, center_y, align_right, center_x, spacing*/
-      1022 ? get_spread_update(container_spread_levels, [dirty &
-      /*$$restProps*/
-      256 && get_spread_object(
-      /*$$restProps*/
-      ctx[8]), dirty &
-      /*column, $$props*/
-      640 && {
-        class: "" + (
-        /*column*/
-        ctx[7] + " " + (
-        /*$$props*/
-        ctx[9].class || ""))
-      }, dirty &
-      /*style, align_bottom, center_y, align_right, center_x*/
-      124 && {
-        style: "\n\t\t" +
-        /*style*/
-        ctx[2] + ";\n\t\tjustify-content: " + (
-        /*align_bottom*/
-        ctx[6] ? "flex-end" :
-        /*center_y*/
-        ctx[5] ? "center" : "flex-start") + ";\n\t\talign-items: " + (
-        /*align_right*/
-        ctx[4] ? "flex-end" :
-        /*center_x*/
-        ctx[3] ? "center" : "flex-start") + ";\n\t"
-      }, dirty &
-      /*spacing*/
-      2 && {
-        spacing_y:
-        /*spacing*/
-        ctx[1]
-      }]) : {};
+			if (dirty & /*$$scope*/ 32) {
+				layout_changes.$$scope = { dirty, ctx };
+			}
 
-      if (dirty &
-      /*$$scope*/
-      4096) {
-        container_changes.$$scope = {
-          dirty,
-          ctx
-        };
-      }
+			if (!updating_ref && dirty & /*ref*/ 1) {
+				updating_ref = true;
+				layout_changes.ref = /*ref*/ ctx[0];
+				add_flush_callback(() => updating_ref = false);
+			}
 
-      if (!updating_ref && dirty &
-      /*ref*/
-      1) {
-        updating_ref = true;
-        container_changes.ref =
-        /*ref*/
-        ctx[0];
-        add_flush_callback(() => updating_ref = false);
-      }
-
-      container.$set(container_changes);
-    },
-
-    i(local) {
-      if (current) return;
-      transition_in(container.$$.fragment, local);
-      current = true;
-    },
-
-    o(local) {
-      transition_out(container.$$.fragment, local);
-      current = false;
-    },
-
-    d(detaching) {
-      destroy_component(container, detaching);
-    }
-
-  };
+			layout.$set(layout_changes);
+		},
+		i(local) {
+			if (current) return;
+			transition_in(layout.$$.fragment, local);
+			current = true;
+		},
+		o(local) {
+			transition_out(layout.$$.fragment, local);
+			current = false;
+		},
+		d(detaching) {
+			destroy_component(layout, detaching);
+		}
+	};
 }
 
-function instance$d($$self, $$props, $$invalidate) {
-  const omit_props_names = ["ref", "spacing", "style", "center_x", "align_right", "center_y", "align_bottom"];
-  let $$restProps = compute_rest_props($$props, omit_props_names);
-  let {
-    $$slots: slots = {},
-    $$scope
-  } = $$props;
-  const column = "column_c13krpcw";
-  let {
-    ref = undefined
-  } = $$props;
-  let {
-    spacing = 0
-  } = $$props;
-  let {
-    style = ""
-  } = $$props;
-  let {
-    center_x = false
-  } = $$props;
-  let {
-    align_right = false
-  } = $$props;
-  let {
-    center_y = false
-  } = $$props;
-  let {
-    align_bottom = false
-  } = $$props;
+function instance$5($$self, $$props, $$invalidate) {
+	const omit_props_names = ["ref"];
+	let $$restProps = compute_rest_props($$props, omit_props_names);
+	let { $$slots: slots = {}, $$scope } = $$props;
+	let { ref = undefined } = $$props;
+	const { class: input_class_name, ...rest_props } = $$restProps;
+	const class_name = [input_class_name || "", "column"].join(" ");
 
-  function container_ref_binding(value) {
-    ref = value;
-    $$invalidate(0, ref);
-  }
+	function layout_ref_binding(value) {
+		ref = value;
+		$$invalidate(0, ref);
+	}
 
-  $$self.$$set = $$new_props => {
-    $$invalidate(9, $$props = assign(assign({}, $$props), exclude_internal_props($$new_props)));
-    $$invalidate(8, $$restProps = compute_rest_props($$props, omit_props_names));
-    if ("ref" in $$new_props) $$invalidate(0, ref = $$new_props.ref);
-    if ("spacing" in $$new_props) $$invalidate(1, spacing = $$new_props.spacing);
-    if ("style" in $$new_props) $$invalidate(2, style = $$new_props.style);
-    if ("center_x" in $$new_props) $$invalidate(3, center_x = $$new_props.center_x);
-    if ("align_right" in $$new_props) $$invalidate(4, align_right = $$new_props.align_right);
-    if ("center_y" in $$new_props) $$invalidate(5, center_y = $$new_props.center_y);
-    if ("align_bottom" in $$new_props) $$invalidate(6, align_bottom = $$new_props.align_bottom);
-    if ("$$scope" in $$new_props) $$invalidate(12, $$scope = $$new_props.$$scope);
-  };
+	$$self.$$set = $$new_props => {
+		$$props = assign(assign({}, $$props), exclude_internal_props($$new_props));
+		$$invalidate(7, $$restProps = compute_rest_props($$props, omit_props_names));
+		if ("ref" in $$new_props) $$invalidate(0, ref = $$new_props.ref);
+		if ("$$scope" in $$new_props) $$invalidate(5, $$scope = $$new_props.$$scope);
+	};
 
-  $$props = exclude_internal_props($$props);
-  return [ref, spacing, style, center_x, align_right, center_y, align_bottom, column, $$restProps, $$props, slots, container_ref_binding, $$scope];
+	return [ref, rest_props, class_name, slots, layout_ref_binding, $$scope];
 }
 
 class Column extends SvelteComponent {
-  constructor(options) {
-    super();
-    init(this, options, instance$d, create_fragment$d, safe_not_equal, {
-      ref: 0,
-      spacing: 1,
-      style: 2,
-      center_x: 3,
-      align_right: 4,
-      center_y: 5,
-      align_bottom: 6
-    });
-  }
-
+	constructor(options) {
+		super();
+		init(this, options, instance$5, create_fragment$5, safe_not_equal, { ref: 0 });
+	}
 }
 
-var css_248z$7 = ".image_i1b6qkac > img{display:block;object-fit:cover;}.image_i1b6qkac[data-height-base=fill] > img{height:100%;}.image_i1b6qkac[data-width-base=fill] > img{width:100%;}\n";
-styleInject(css_248z$7);
+var css_248z$4 = ".image_i1b6qkac > img{display:block;object-fit:cover;}.image_i1b6qkac[data-height-base=fill] > img{height:100%;}.image_i1b6qkac[data-width-base=fill] > img{width:100%;}\n";
+styleInject(css_248z$4);
 
 const image = "image_i1b6qkac";
 
 /* src/Image.svelte generated by Svelte v3.32.0 */
 
-function create_default_slot$b(ctx) {
+function create_default_slot$4(ctx) {
 	let img;
 	let img_src_value;
 
@@ -5133,7 +1694,7 @@ function create_default_slot$b(ctx) {
 	};
 }
 
-function create_fragment$e(ctx) {
+function create_fragment$6(ctx) {
 	let box;
 	let updating_ref;
 	let current;
@@ -5150,7 +1711,7 @@ function create_fragment$e(ctx) {
 	}
 
 	let box_props = {
-		$$slots: { default: [create_default_slot$b] },
+		$$slots: { default: [create_default_slot$4] },
 		$$scope: { ctx }
 	};
 
@@ -5213,7 +1774,7 @@ function create_fragment$e(ctx) {
 	};
 }
 
-function instance$e($$self, $$props, $$invalidate) {
+function instance$6($$self, $$props, $$invalidate) {
 	const omit_props_names = ["ref","src","description","origin_x","origin_y"];
 	let $$restProps = compute_rest_props($$props, omit_props_names);
 	let { ref = undefined } = $$props;
@@ -5255,7 +1816,7 @@ class Image extends SvelteComponent {
 	constructor(options) {
 		super();
 
-		init(this, options, instance$e, create_fragment$e, safe_not_equal, {
+		init(this, options, instance$6, create_fragment$6, safe_not_equal, {
 			ref: 0,
 			src: 1,
 			description: 2,
@@ -5265,17 +1826,12 @@ class Image extends SvelteComponent {
 	}
 }
 
-var css_248z$8 = ".viewport_v1p95n9t{position:absolute;top:0;left:0;height:100%;width:100%;-webkit-overflow-scrolling:touch;}\n";
-styleInject(css_248z$8);
+/* src/Row.svelte generated by Svelte v3.32.0 */
 
-const viewport = "viewport_v1p95n9t";
-
-/* src/Viewport.svelte generated by Svelte v3.32.0 */
-
-function create_default_slot$c(ctx) {
+function create_default_slot$5(ctx) {
 	let current;
-	const default_slot_template = /*#slots*/ ctx[13].default;
-	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[15], null);
+	const default_slot_template = /*#slots*/ ctx[3].default;
+	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[5], null);
 
 	return {
 		c() {
@@ -5293,8 +1849,8 @@ function create_default_slot$c(ctx) {
 		},
 		p(ctx, dirty) {
 			if (default_slot) {
-				if (default_slot.p && dirty & /*$$scope*/ 32768) {
-					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[15], dirty, null, null);
+				if (default_slot.p && dirty & /*$$scope*/ 32) {
+					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[5], dirty, null, null);
 				}
 			}
 		},
@@ -5313,213 +1869,864 @@ function create_default_slot$c(ctx) {
 	};
 }
 
-function create_fragment$f(ctx) {
-	let div;
-	let box;
+function create_fragment$7(ctx) {
+	let layout;
 	let updating_ref;
 	let current;
-	let mounted;
-	let dispose;
 
-	function box_ref_binding(value) {
-		/*box_ref_binding*/ ctx[14].call(null, value);
+	const layout_spread_levels = [
+		/*rest_props*/ ctx[1],
+		{ class: /*class_name*/ ctx[2] },
+		{ layout_class: layout_x },
+		{ layout_style: layout_x_style }
+	];
+
+	function layout_ref_binding(value) {
+		/*layout_ref_binding*/ ctx[4].call(null, value);
 	}
 
-	let box_props = {
-		class: "" + (viewport + " " + (/*$$props*/ ctx[12].class || "")),
-		center_x: /*center_x*/ ctx[1],
-		align_right: /*align_right*/ ctx[2],
-		center_y: /*center_y*/ ctx[3],
-		align_bottom: /*align_bottom*/ ctx[4],
-		x,
-		y,
-		clip_x: /*clip_x*/ ctx[9],
-		clip_y: /*clip_y*/ ctx[10],
-		scroll_x: /*scroll_x*/ ctx[6],
-		scroll_y: /*scroll_y*/ ctx[5],
-		style: /*style*/ ctx[7],
-		$$slots: { default: [create_default_slot$c] },
+	let layout_props = {
+		$$slots: { default: [create_default_slot$5] },
 		$$scope: { ctx }
 	};
 
-	if (/*ref*/ ctx[0] !== void 0) {
-		box_props.ref = /*ref*/ ctx[0];
+	for (let i = 0; i < layout_spread_levels.length; i += 1) {
+		layout_props = assign(layout_props, layout_spread_levels[i]);
 	}
 
-	box = new Box({ props: box_props });
-	binding_callbacks.push(() => bind(box, "ref", box_ref_binding));
+	if (/*ref*/ ctx[0] !== void 0) {
+		layout_props.ref = /*ref*/ ctx[0];
+	}
+
+	layout = new Layout({ props: layout_props });
+	binding_callbacks.push(() => bind(layout, "ref", layout_ref_binding));
 
 	return {
 		c() {
-			div = element("div");
-			create_component(box.$$.fragment);
-			this.h();
+			create_component(layout.$$.fragment);
 		},
 		l(nodes) {
-			div = claim_element(nodes, "DIV", { class: true, style: true });
-			var div_nodes = children(div);
-			claim_component(box.$$.fragment, div_nodes);
-			div_nodes.forEach(detach);
-			this.h();
-		},
-		h() {
-			attr(div, "class", "viewport-context");
-			set_style(div, "display", /*display*/ ctx[8]);
+			claim_component(layout.$$.fragment, nodes);
 		},
 		m(target, anchor) {
-			insert(target, div, anchor);
-			mount_component(box, div, null);
+			mount_component(layout, target, anchor);
 			current = true;
-
-			if (!mounted) {
-				dispose = action_destroyer(/*render*/ ctx[11].call(null, div));
-				mounted = true;
-			}
 		},
 		p(ctx, [dirty]) {
-			const box_changes = {};
-			if (dirty & /*$$props*/ 4096) box_changes.class = "" + (viewport + " " + (/*$$props*/ ctx[12].class || ""));
-			if (dirty & /*center_x*/ 2) box_changes.center_x = /*center_x*/ ctx[1];
-			if (dirty & /*align_right*/ 4) box_changes.align_right = /*align_right*/ ctx[2];
-			if (dirty & /*center_y*/ 8) box_changes.center_y = /*center_y*/ ctx[3];
-			if (dirty & /*align_bottom*/ 16) box_changes.align_bottom = /*align_bottom*/ ctx[4];
-			if (dirty & /*clip_x*/ 512) box_changes.clip_x = /*clip_x*/ ctx[9];
-			if (dirty & /*clip_y*/ 1024) box_changes.clip_y = /*clip_y*/ ctx[10];
-			if (dirty & /*scroll_x*/ 64) box_changes.scroll_x = /*scroll_x*/ ctx[6];
-			if (dirty & /*scroll_y*/ 32) box_changes.scroll_y = /*scroll_y*/ ctx[5];
-			if (dirty & /*style*/ 128) box_changes.style = /*style*/ ctx[7];
+			const layout_changes = (dirty & /*rest_props, class_name, layout_x, layout_x_style*/ 6)
+			? get_spread_update(layout_spread_levels, [
+					dirty & /*rest_props*/ 2 && get_spread_object(/*rest_props*/ ctx[1]),
+					dirty & /*class_name*/ 4 && { class: /*class_name*/ ctx[2] },
+					dirty & /*layout_x*/ 0 && { layout_class: layout_x },
+					dirty & /*layout_x_style*/ 0 && { layout_style: layout_x_style }
+				])
+			: {};
 
-			if (dirty & /*$$scope*/ 32768) {
-				box_changes.$$scope = { dirty, ctx };
+			if (dirty & /*$$scope*/ 32) {
+				layout_changes.$$scope = { dirty, ctx };
 			}
 
 			if (!updating_ref && dirty & /*ref*/ 1) {
 				updating_ref = true;
-				box_changes.ref = /*ref*/ ctx[0];
+				layout_changes.ref = /*ref*/ ctx[0];
 				add_flush_callback(() => updating_ref = false);
 			}
 
-			box.$set(box_changes);
-
-			if (!current || dirty & /*display*/ 256) {
-				set_style(div, "display", /*display*/ ctx[8]);
-			}
+			layout.$set(layout_changes);
 		},
 		i(local) {
 			if (current) return;
-			transition_in(box.$$.fragment, local);
+			transition_in(layout.$$.fragment, local);
 			current = true;
 		},
 		o(local) {
-			transition_out(box.$$.fragment, local);
+			transition_out(layout.$$.fragment, local);
 			current = false;
 		},
 		d(detaching) {
-			if (detaching) detach(div);
-			destroy_component(box);
-			mounted = false;
-			dispose();
+			destroy_component(layout, detaching);
 		}
 	};
 }
 
-let x = 0;
-let y = 0;
-
-function instance$f($$self, $$props, $$invalidate) {
-	let clip_x;
-	let clip_y;
+function instance$7($$self, $$props, $$invalidate) {
+	const omit_props_names = ["ref"];
+	let $$restProps = compute_rest_props($$props, omit_props_names);
 	let { $$slots: slots = {}, $$scope } = $$props;
 	let { ref = undefined } = $$props;
-	let { center_x = false } = $$props;
-	let { align_right = false } = $$props;
-	let { center_y = false } = $$props;
-	let { align_bottom = false } = $$props;
-	let { scroll_y = true } = $$props;
-	let { scroll_x = true } = $$props;
-	let { style = "" } = $$props;
-	let display = "none";
+	const { class: input_class_name, ...rest_props } = $$restProps;
+	const class_name = [input_class_name || "", "row"].join(" ");
 
-	const render = node => {
-		document.body.appendChild(node);
-		$$invalidate(8, display = "contents");
-	};
-
-	function box_ref_binding(value) {
+	function layout_ref_binding(value) {
 		ref = value;
 		$$invalidate(0, ref);
 	}
 
 	$$self.$$set = $$new_props => {
-		$$invalidate(12, $$props = assign(assign({}, $$props), exclude_internal_props($$new_props)));
+		$$props = assign(assign({}, $$props), exclude_internal_props($$new_props));
+		$$invalidate(7, $$restProps = compute_rest_props($$props, omit_props_names));
 		if ("ref" in $$new_props) $$invalidate(0, ref = $$new_props.ref);
-		if ("center_x" in $$new_props) $$invalidate(1, center_x = $$new_props.center_x);
-		if ("align_right" in $$new_props) $$invalidate(2, align_right = $$new_props.align_right);
-		if ("center_y" in $$new_props) $$invalidate(3, center_y = $$new_props.center_y);
-		if ("align_bottom" in $$new_props) $$invalidate(4, align_bottom = $$new_props.align_bottom);
-		if ("scroll_y" in $$new_props) $$invalidate(5, scroll_y = $$new_props.scroll_y);
-		if ("scroll_x" in $$new_props) $$invalidate(6, scroll_x = $$new_props.scroll_x);
-		if ("style" in $$new_props) $$invalidate(7, style = $$new_props.style);
-		if ("$$scope" in $$new_props) $$invalidate(15, $$scope = $$new_props.$$scope);
+		if ("$$scope" in $$new_props) $$invalidate(5, $$scope = $$new_props.$$scope);
 	};
 
-	$$self.$$.update = () => {
-		if ($$self.$$.dirty & /*scroll_x*/ 64) {
-			 $$invalidate(9, clip_x = !scroll_x);
-		}
-
-		if ($$self.$$.dirty & /*scroll_y*/ 32) {
-			 $$invalidate(10, clip_y = !scroll_y);
-		}
-	};
-
-	$$props = exclude_internal_props($$props);
-
-	return [
-		ref,
-		center_x,
-		align_right,
-		center_y,
-		align_bottom,
-		scroll_y,
-		scroll_x,
-		style,
-		display,
-		clip_x,
-		clip_y,
-		render,
-		$$props,
-		slots,
-		box_ref_binding,
-		$$scope
-	];
+	return [ref, rest_props, class_name, slots, layout_ref_binding, $$scope];
 }
 
-class Viewport extends SvelteComponent {
+class Row extends SvelteComponent {
 	constructor(options) {
 		super();
-
-		init(this, options, instance$f, create_fragment$f, safe_not_equal, {
-			ref: 0,
-			center_x: 1,
-			align_right: 2,
-			center_y: 3,
-			align_bottom: 4,
-			scroll_y: 5,
-			scroll_x: 6,
-			style: 7
-		});
+		init(this, options, instance$7, create_fragment$7, safe_not_equal, { ref: 0 });
 	}
 }
 
+var css_248z$5 = ".reset_rcbd2q{-webkit-align-self:auto;-ms-flex-item-align:auto;align-self:auto;border-color:#000000;border-style:solid;border-width:0;box-sizing:border-box;color:inherit;display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-basis:auto;-ms-flex-preferred-size:auto;flex-basis:auto;-webkit-flex-direction:row;-ms-flex-direction:row;flex-direction:row;-webkit-flex-shrink:0;-ms-flex-negative:0;flex-shrink:0;-webkit-flex-wrap:nowrap;-ms-flex-wrap:nowrap;flex-wrap:nowrap;font-family:inherit;font-size:inherit;font-style:inherit;font-weight:inherit;line-height:1;margin:0;opacity:1;overflow:visible;padding:0;position:relative;resize:none;-webkit-text-decoration:none;text-decoration:none;}\n";
+styleInject(css_248z$5);
+
+const reset = "reset_rcbd2q";
+
+/* src/Nearby.svelte generated by Svelte v3.32.0 */
+
+function create_fragment$8(ctx) {
+	let div1;
+	let div0;
+	let div1_class_value;
+	let current;
+	const default_slot_template = /*#slots*/ ctx[2].default;
+	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[1], null);
+
+	return {
+		c() {
+			div1 = element("div");
+			div0 = element("div");
+			if (default_slot) default_slot.c();
+			this.h();
+		},
+		l(nodes) {
+			div1 = claim_element(nodes, "DIV", { class: true });
+			var div1_nodes = children(div1);
+			div0 = claim_element(div1_nodes, "DIV", { class: true });
+			var div0_nodes = children(div0);
+			if (default_slot) default_slot.l(div0_nodes);
+			div0_nodes.forEach(detach);
+			div1_nodes.forEach(detach);
+			this.h();
+		},
+		h() {
+			attr(div0, "class", "" + (reset + " " + nearby_container));
+			attr(div1, "class", div1_class_value = "" + (nearby + " " + /*$$props*/ ctx[0].class));
+		},
+		m(target, anchor) {
+			insert(target, div1, anchor);
+			append(div1, div0);
+
+			if (default_slot) {
+				default_slot.m(div0, null);
+			}
+
+			current = true;
+		},
+		p(ctx, [dirty]) {
+			if (default_slot) {
+				if (default_slot.p && dirty & /*$$scope*/ 2) {
+					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[1], dirty, null, null);
+				}
+			}
+
+			if (!current || dirty & /*$$props*/ 1 && div1_class_value !== (div1_class_value = "" + (nearby + " " + /*$$props*/ ctx[0].class))) {
+				attr(div1, "class", div1_class_value);
+			}
+		},
+		i(local) {
+			if (current) return;
+			transition_in(default_slot, local);
+			current = true;
+		},
+		o(local) {
+			transition_out(default_slot, local);
+			current = false;
+		},
+		d(detaching) {
+			if (detaching) detach(div1);
+			if (default_slot) default_slot.d(detaching);
+		}
+	};
+}
+
+function instance$8($$self, $$props, $$invalidate) {
+	let { $$slots: slots = {}, $$scope } = $$props;
+
+	$$self.$$set = $$new_props => {
+		$$invalidate(0, $$props = assign(assign({}, $$props), exclude_internal_props($$new_props)));
+		if ("$$scope" in $$new_props) $$invalidate(1, $$scope = $$new_props.$$scope);
+	};
+
+	$$props = exclude_internal_props($$props);
+	return [$$props, $$scope, slots];
+}
+
+class Nearby extends SvelteComponent {
+	constructor(options) {
+		super();
+		init(this, options, instance$8, create_fragment$8, safe_not_equal, {});
+	}
+}
+
+/* src/Above.svelte generated by Svelte v3.32.0 */
+
+function create_default_slot$6(ctx) {
+	let current;
+	const default_slot_template = /*#slots*/ ctx[0].default;
+	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[1], null);
+
+	return {
+		c() {
+			if (default_slot) default_slot.c();
+		},
+		l(nodes) {
+			if (default_slot) default_slot.l(nodes);
+		},
+		m(target, anchor) {
+			if (default_slot) {
+				default_slot.m(target, anchor);
+			}
+
+			current = true;
+		},
+		p(ctx, dirty) {
+			if (default_slot) {
+				if (default_slot.p && dirty & /*$$scope*/ 2) {
+					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[1], dirty, null, null);
+				}
+			}
+		},
+		i(local) {
+			if (current) return;
+			transition_in(default_slot, local);
+			current = true;
+		},
+		o(local) {
+			transition_out(default_slot, local);
+			current = false;
+		},
+		d(detaching) {
+			if (default_slot) default_slot.d(detaching);
+		}
+	};
+}
+
+function create_fragment$9(ctx) {
+	let nearby;
+	let current;
+
+	nearby = new Nearby({
+			props: {
+				class: "" + (nearby_y + " " + above),
+				$$slots: { default: [create_default_slot$6] },
+				$$scope: { ctx }
+			}
+		});
+
+	return {
+		c() {
+			create_component(nearby.$$.fragment);
+		},
+		l(nodes) {
+			claim_component(nearby.$$.fragment, nodes);
+		},
+		m(target, anchor) {
+			mount_component(nearby, target, anchor);
+			current = true;
+		},
+		p(ctx, [dirty]) {
+			const nearby_changes = {};
+
+			if (dirty & /*$$scope*/ 2) {
+				nearby_changes.$$scope = { dirty, ctx };
+			}
+
+			nearby.$set(nearby_changes);
+		},
+		i(local) {
+			if (current) return;
+			transition_in(nearby.$$.fragment, local);
+			current = true;
+		},
+		o(local) {
+			transition_out(nearby.$$.fragment, local);
+			current = false;
+		},
+		d(detaching) {
+			destroy_component(nearby, detaching);
+		}
+	};
+}
+
+function instance$9($$self, $$props, $$invalidate) {
+	let { $$slots: slots = {}, $$scope } = $$props;
+
+	$$self.$$set = $$props => {
+		if ("$$scope" in $$props) $$invalidate(1, $$scope = $$props.$$scope);
+	};
+
+	return [slots, $$scope];
+}
+
+class Above extends SvelteComponent {
+	constructor(options) {
+		super();
+		init(this, options, instance$9, create_fragment$9, safe_not_equal, {});
+	}
+}
+
+/* src/Below.svelte generated by Svelte v3.32.0 */
+
+function create_default_slot$7(ctx) {
+	let current;
+	const default_slot_template = /*#slots*/ ctx[0].default;
+	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[1], null);
+
+	return {
+		c() {
+			if (default_slot) default_slot.c();
+		},
+		l(nodes) {
+			if (default_slot) default_slot.l(nodes);
+		},
+		m(target, anchor) {
+			if (default_slot) {
+				default_slot.m(target, anchor);
+			}
+
+			current = true;
+		},
+		p(ctx, dirty) {
+			if (default_slot) {
+				if (default_slot.p && dirty & /*$$scope*/ 2) {
+					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[1], dirty, null, null);
+				}
+			}
+		},
+		i(local) {
+			if (current) return;
+			transition_in(default_slot, local);
+			current = true;
+		},
+		o(local) {
+			transition_out(default_slot, local);
+			current = false;
+		},
+		d(detaching) {
+			if (default_slot) default_slot.d(detaching);
+		}
+	};
+}
+
+function create_fragment$a(ctx) {
+	let nearby;
+	let current;
+
+	nearby = new Nearby({
+			props: {
+				class: "" + (nearby_y + " " + below),
+				$$slots: { default: [create_default_slot$7] },
+				$$scope: { ctx }
+			}
+		});
+
+	return {
+		c() {
+			create_component(nearby.$$.fragment);
+		},
+		l(nodes) {
+			claim_component(nearby.$$.fragment, nodes);
+		},
+		m(target, anchor) {
+			mount_component(nearby, target, anchor);
+			current = true;
+		},
+		p(ctx, [dirty]) {
+			const nearby_changes = {};
+
+			if (dirty & /*$$scope*/ 2) {
+				nearby_changes.$$scope = { dirty, ctx };
+			}
+
+			nearby.$set(nearby_changes);
+		},
+		i(local) {
+			if (current) return;
+			transition_in(nearby.$$.fragment, local);
+			current = true;
+		},
+		o(local) {
+			transition_out(nearby.$$.fragment, local);
+			current = false;
+		},
+		d(detaching) {
+			destroy_component(nearby, detaching);
+		}
+	};
+}
+
+function instance$a($$self, $$props, $$invalidate) {
+	let { $$slots: slots = {}, $$scope } = $$props;
+
+	$$self.$$set = $$props => {
+		if ("$$scope" in $$props) $$invalidate(1, $$scope = $$props.$$scope);
+	};
+
+	return [slots, $$scope];
+}
+
+class Below extends SvelteComponent {
+	constructor(options) {
+		super();
+		init(this, options, instance$a, create_fragment$a, safe_not_equal, {});
+	}
+}
+
+/* src/On_left.svelte generated by Svelte v3.32.0 */
+
+function create_default_slot$8(ctx) {
+	let current;
+	const default_slot_template = /*#slots*/ ctx[0].default;
+	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[1], null);
+
+	return {
+		c() {
+			if (default_slot) default_slot.c();
+		},
+		l(nodes) {
+			if (default_slot) default_slot.l(nodes);
+		},
+		m(target, anchor) {
+			if (default_slot) {
+				default_slot.m(target, anchor);
+			}
+
+			current = true;
+		},
+		p(ctx, dirty) {
+			if (default_slot) {
+				if (default_slot.p && dirty & /*$$scope*/ 2) {
+					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[1], dirty, null, null);
+				}
+			}
+		},
+		i(local) {
+			if (current) return;
+			transition_in(default_slot, local);
+			current = true;
+		},
+		o(local) {
+			transition_out(default_slot, local);
+			current = false;
+		},
+		d(detaching) {
+			if (default_slot) default_slot.d(detaching);
+		}
+	};
+}
+
+function create_fragment$b(ctx) {
+	let nearby;
+	let current;
+
+	nearby = new Nearby({
+			props: {
+				class: "" + (nearby_x + " " + on_left),
+				$$slots: { default: [create_default_slot$8] },
+				$$scope: { ctx }
+			}
+		});
+
+	return {
+		c() {
+			create_component(nearby.$$.fragment);
+		},
+		l(nodes) {
+			claim_component(nearby.$$.fragment, nodes);
+		},
+		m(target, anchor) {
+			mount_component(nearby, target, anchor);
+			current = true;
+		},
+		p(ctx, [dirty]) {
+			const nearby_changes = {};
+
+			if (dirty & /*$$scope*/ 2) {
+				nearby_changes.$$scope = { dirty, ctx };
+			}
+
+			nearby.$set(nearby_changes);
+		},
+		i(local) {
+			if (current) return;
+			transition_in(nearby.$$.fragment, local);
+			current = true;
+		},
+		o(local) {
+			transition_out(nearby.$$.fragment, local);
+			current = false;
+		},
+		d(detaching) {
+			destroy_component(nearby, detaching);
+		}
+	};
+}
+
+function instance$b($$self, $$props, $$invalidate) {
+	let { $$slots: slots = {}, $$scope } = $$props;
+
+	$$self.$$set = $$props => {
+		if ("$$scope" in $$props) $$invalidate(1, $$scope = $$props.$$scope);
+	};
+
+	return [slots, $$scope];
+}
+
+class On_left extends SvelteComponent {
+	constructor(options) {
+		super();
+		init(this, options, instance$b, create_fragment$b, safe_not_equal, {});
+	}
+}
+
+/* src/On_right.svelte generated by Svelte v3.32.0 */
+
+function create_default_slot$9(ctx) {
+	let current;
+	const default_slot_template = /*#slots*/ ctx[0].default;
+	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[1], null);
+
+	return {
+		c() {
+			if (default_slot) default_slot.c();
+		},
+		l(nodes) {
+			if (default_slot) default_slot.l(nodes);
+		},
+		m(target, anchor) {
+			if (default_slot) {
+				default_slot.m(target, anchor);
+			}
+
+			current = true;
+		},
+		p(ctx, dirty) {
+			if (default_slot) {
+				if (default_slot.p && dirty & /*$$scope*/ 2) {
+					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[1], dirty, null, null);
+				}
+			}
+		},
+		i(local) {
+			if (current) return;
+			transition_in(default_slot, local);
+			current = true;
+		},
+		o(local) {
+			transition_out(default_slot, local);
+			current = false;
+		},
+		d(detaching) {
+			if (default_slot) default_slot.d(detaching);
+		}
+	};
+}
+
+function create_fragment$c(ctx) {
+	let nearby;
+	let current;
+
+	nearby = new Nearby({
+			props: {
+				class: "" + (nearby_x + " " + on_right),
+				$$slots: { default: [create_default_slot$9] },
+				$$scope: { ctx }
+			}
+		});
+
+	return {
+		c() {
+			create_component(nearby.$$.fragment);
+		},
+		l(nodes) {
+			claim_component(nearby.$$.fragment, nodes);
+		},
+		m(target, anchor) {
+			mount_component(nearby, target, anchor);
+			current = true;
+		},
+		p(ctx, [dirty]) {
+			const nearby_changes = {};
+
+			if (dirty & /*$$scope*/ 2) {
+				nearby_changes.$$scope = { dirty, ctx };
+			}
+
+			nearby.$set(nearby_changes);
+		},
+		i(local) {
+			if (current) return;
+			transition_in(nearby.$$.fragment, local);
+			current = true;
+		},
+		o(local) {
+			transition_out(nearby.$$.fragment, local);
+			current = false;
+		},
+		d(detaching) {
+			destroy_component(nearby, detaching);
+		}
+	};
+}
+
+function instance$c($$self, $$props, $$invalidate) {
+	let { $$slots: slots = {}, $$scope } = $$props;
+
+	$$self.$$set = $$props => {
+		if ("$$scope" in $$props) $$invalidate(1, $$scope = $$props.$$scope);
+	};
+
+	return [slots, $$scope];
+}
+
+class On_right extends SvelteComponent {
+	constructor(options) {
+		super();
+		init(this, options, instance$c, create_fragment$c, safe_not_equal, {});
+	}
+}
+
+/* src/In_back.svelte generated by Svelte v3.32.0 */
+
+function create_default_slot$a(ctx) {
+	let current;
+	const default_slot_template = /*#slots*/ ctx[0].default;
+	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[1], null);
+
+	return {
+		c() {
+			if (default_slot) default_slot.c();
+		},
+		l(nodes) {
+			if (default_slot) default_slot.l(nodes);
+		},
+		m(target, anchor) {
+			if (default_slot) {
+				default_slot.m(target, anchor);
+			}
+
+			current = true;
+		},
+		p(ctx, dirty) {
+			if (default_slot) {
+				if (default_slot.p && dirty & /*$$scope*/ 2) {
+					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[1], dirty, null, null);
+				}
+			}
+		},
+		i(local) {
+			if (current) return;
+			transition_in(default_slot, local);
+			current = true;
+		},
+		o(local) {
+			transition_out(default_slot, local);
+			current = false;
+		},
+		d(detaching) {
+			if (default_slot) default_slot.d(detaching);
+		}
+	};
+}
+
+function create_fragment$d(ctx) {
+	let nearby;
+	let current;
+
+	nearby = new Nearby({
+			props: {
+				class: "" + (nearby_x + " " + nearby_y + " " + in_back),
+				$$slots: { default: [create_default_slot$a] },
+				$$scope: { ctx }
+			}
+		});
+
+	return {
+		c() {
+			create_component(nearby.$$.fragment);
+		},
+		l(nodes) {
+			claim_component(nearby.$$.fragment, nodes);
+		},
+		m(target, anchor) {
+			mount_component(nearby, target, anchor);
+			current = true;
+		},
+		p(ctx, [dirty]) {
+			const nearby_changes = {};
+
+			if (dirty & /*$$scope*/ 2) {
+				nearby_changes.$$scope = { dirty, ctx };
+			}
+
+			nearby.$set(nearby_changes);
+		},
+		i(local) {
+			if (current) return;
+			transition_in(nearby.$$.fragment, local);
+			current = true;
+		},
+		o(local) {
+			transition_out(nearby.$$.fragment, local);
+			current = false;
+		},
+		d(detaching) {
+			destroy_component(nearby, detaching);
+		}
+	};
+}
+
+function instance$d($$self, $$props, $$invalidate) {
+	let { $$slots: slots = {}, $$scope } = $$props;
+
+	$$self.$$set = $$props => {
+		if ("$$scope" in $$props) $$invalidate(1, $$scope = $$props.$$scope);
+	};
+
+	return [slots, $$scope];
+}
+
+class In_back extends SvelteComponent {
+	constructor(options) {
+		super();
+		init(this, options, instance$d, create_fragment$d, safe_not_equal, {});
+	}
+}
+
+/* src/In_front.svelte generated by Svelte v3.32.0 */
+
+function create_default_slot$b(ctx) {
+	let current;
+	const default_slot_template = /*#slots*/ ctx[0].default;
+	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[1], null);
+
+	return {
+		c() {
+			if (default_slot) default_slot.c();
+		},
+		l(nodes) {
+			if (default_slot) default_slot.l(nodes);
+		},
+		m(target, anchor) {
+			if (default_slot) {
+				default_slot.m(target, anchor);
+			}
+
+			current = true;
+		},
+		p(ctx, dirty) {
+			if (default_slot) {
+				if (default_slot.p && dirty & /*$$scope*/ 2) {
+					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[1], dirty, null, null);
+				}
+			}
+		},
+		i(local) {
+			if (current) return;
+			transition_in(default_slot, local);
+			current = true;
+		},
+		o(local) {
+			transition_out(default_slot, local);
+			current = false;
+		},
+		d(detaching) {
+			if (default_slot) default_slot.d(detaching);
+		}
+	};
+}
+
+function create_fragment$e(ctx) {
+	let nearby;
+	let current;
+
+	nearby = new Nearby({
+			props: {
+				class: "" + (nearby_x + " " + nearby_y),
+				$$slots: { default: [create_default_slot$b] },
+				$$scope: { ctx }
+			}
+		});
+
+	return {
+		c() {
+			create_component(nearby.$$.fragment);
+		},
+		l(nodes) {
+			claim_component(nearby.$$.fragment, nodes);
+		},
+		m(target, anchor) {
+			mount_component(nearby, target, anchor);
+			current = true;
+		},
+		p(ctx, [dirty]) {
+			const nearby_changes = {};
+
+			if (dirty & /*$$scope*/ 2) {
+				nearby_changes.$$scope = { dirty, ctx };
+			}
+
+			nearby.$set(nearby_changes);
+		},
+		i(local) {
+			if (current) return;
+			transition_in(nearby.$$.fragment, local);
+			current = true;
+		},
+		o(local) {
+			transition_out(nearby.$$.fragment, local);
+			current = false;
+		},
+		d(detaching) {
+			destroy_component(nearby, detaching);
+		}
+	};
+}
+
+function instance$e($$self, $$props, $$invalidate) {
+	let { $$slots: slots = {}, $$scope } = $$props;
+
+	$$self.$$set = $$props => {
+		if ("$$scope" in $$props) $$invalidate(1, $$scope = $$props.$$scope);
+	};
+
+	return [slots, $$scope];
+}
+
+class In_front extends SvelteComponent {
+	constructor(options) {
+		super();
+		init(this, options, instance$e, create_fragment$e, safe_not_equal, {});
+	}
+}
+
+exports.Above = Above;
 exports.Aspect_ratio = Aspect_ratio;
+exports.Below = Below;
 exports.Box = Box;
 exports.Column = Column;
 exports.Image = Image;
+exports.In_back = In_back;
+exports.In_front = In_front;
+exports.On_left = On_left;
+exports.On_right = On_right;
 exports.Row = Row;
-exports.Viewport = Viewport;
 exports.content = content;
 exports.fill = fill;
+exports.format_length = format_length;
 exports.length_css = length_css;
 exports.max = max;
 exports.min = min;
