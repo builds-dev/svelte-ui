@@ -61,7 +61,7 @@ export const layout_y = css`
 	}
 
 	& > ${element}[data-width-base=fill] {
-		width: 100%;
+		align-self: stretch;
 	}
 
 	& > ${element}[data-height-base=content] {
