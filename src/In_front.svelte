@@ -3,6 +3,6 @@
 	import { nearby_x, nearby_y } from './nearby'
 </script>
 
-<Nearby class="{ nearby_x} { nearby_y }">
+<Nearby class="{ nearby_x } { nearby_y }">
 	<slot/>
 </Nearby>
