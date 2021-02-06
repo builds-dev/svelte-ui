@@ -13,3 +13,4 @@ export { default as In_back } from './In_back.svelte'
 export { default as In_front } from './In_front.svelte'
 
 export * from './length.js'
+export * from './spacing.js'

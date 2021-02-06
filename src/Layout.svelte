@@ -6,11 +6,20 @@
 	export let ref
 	export let layout_class
 	export let layout_style
+	export let layout_spacing
 	export let spacing = 0
 	export let spacing_x = 0
 	export let spacing_y = 0
 
-	$: spacings = { x: spacing_x || spacing, y: spacing_y || spacing }
+	$: computed_spacing_x = spacing_x || spacing
+	$: computed_spacing_y = spacing_y || spacing
+	$: style = [
+		'flex-grow: 1;',
+		layout_any_style($$props),
+		layout_style($$props),
+		layout_spacing(computed_spacing_x, computed_spacing_y),
+		spacing_context(computed_spacing_x, computed_spacing_y)
+	].join('')
 </script>
 
 <Element
@@ -19,9 +28,12 @@
 >
 	<div
 		class="{ layout_class } { layout }"
-		style="height: 100%; { layout_style($$props) } { layout_any_style($$props) } { spacing_context(spacings) }"
+		{ style }
 	>
-		<Spacing_context {...spacings}>
+		<Spacing_context
+			x={ typeof computed_spacing_x === 'number' ? computed_spacing_x : 0 }
+			y={ typeof computed_spacing_y === 'number' ? computed_spacing_y : 0 }
+		>
 			<slot/>
 		</Spacing_context>
 	</div>
