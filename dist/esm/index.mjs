@@ -601,7 +601,7 @@ function styleInject(css, ref) {
   }
 }
 
-var css_248z = ".element_ekolm46{-webkit-flex-basis:auto;-ms-flex-preferred-size:auto;flex-basis:auto;-webkit-flex-shrink:0;-ms-flex-negative:0;flex-shrink:0;position:relative;box-sizing:border-box;height:auto;width:auto;overflow:visible;}.element_ekolm46[data-height-base=px]{height:var(--height-base-value);}.element_ekolm46[data-width-base=px]{width:var(--width-base-value);}\n";
+var css_248z = ".element_ekolm46{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-basis:auto;-ms-flex-preferred-size:auto;flex-basis:auto;-webkit-flex-shrink:0;-ms-flex-negative:0;flex-shrink:0;position:relative;box-sizing:border-box;height:auto;width:auto;overflow:visible;}.element_ekolm46[data-height-base=px]{height:var(--height-base-value);}.element_ekolm46[data-width-base=px]{width:var(--width-base-value);}\n";
 styleInject(css_248z);
 
 /*
@@ -805,6 +805,10 @@ class Element extends SvelteComponent {
 	}
 }
 
+const space_between = 'space-between';
+const space_around = 'space-around';
+const space_evenly = 'space-evenly';
+
 var css_248z$1 = ".layout_lb7yjy4{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-wrap:nowrap;-ms-flex-wrap:nowrap;flex-wrap:nowrap;-webkit-align-items:flex-start;-webkit-box-align:flex-start;-ms-flex-align:flex-start;align-items:flex-start;-webkit-box-pack:start;-webkit-justify-content:flex-start;-ms-flex-pack:start;justify-content:flex-start;}\n.layout_x_l1m6442m{-webkit-flex-direction:row;-ms-flex-direction:row;flex-direction:row;}.layout_x_l1m6442m > .element_ekolm46[data-height-base=fill]{-webkit-align-self:stretch;-ms-flex-item-align:stretch;align-self:stretch;}.layout_x_l1m6442m > .element_ekolm46[data-width-base=fill]{-webkit-flex-basis:0;-ms-flex-preferred-size:0;flex-basis:0;-webkit-box-flex:var(--width-base-value);-webkit-flex-grow:var(--width-base-value);-ms-flex-positive:var(--width-base-value);flex-grow:var(--width-base-value);}.layout_x_l1m6442m > .element_ekolm46[data-height-base=content]{height:auto;}.layout_x_l1m6442m > .element_ekolm46[data-width-base=content]{-webkit-flex-basis:auto;-ms-flex-preferred-size:auto;flex-basis:auto;-webkit-box-flex:0;-webkit-flex-grow:0;-ms-flex-positive:0;flex-grow:0;}\n.layout_y_l8o4g34{-webkit-flex-direction:column;-ms-flex-direction:column;flex-direction:column;}.layout_y_l8o4g34 > .element_ekolm46[data-height-base=fill]{-webkit-flex-basis:0;-ms-flex-preferred-size:0;flex-basis:0;-webkit-box-flex:var(--height-base-value);-webkit-flex-grow:var(--height-base-value);-ms-flex-positive:var(--height-base-value);flex-grow:var(--height-base-value);}.layout_y_l8o4g34 > .element_ekolm46[data-width-base=fill]{-webkit-align-self:stretch;-ms-flex-item-align:stretch;align-self:stretch;}.layout_y_l8o4g34 > .element_ekolm46[data-height-base=content]{-webkit-flex-basis:auto;-ms-flex-preferred-size:auto;flex-basis:auto;-webkit-box-flex:0;-webkit-flex-grow:0;-ms-flex-positive:0;flex-grow:0;}.layout_y_l8o4g34 > .element_ekolm46[data-width-base=content]{width:auto;}\n";
 styleInject(css_248z$1);
 
@@ -839,10 +843,11 @@ const layout_y_style = ({
   center_x
 }) => [align_bottom || center_y ? `justify-content: ${align_bottom ? 'flex-end' : 'center'};` : '', align_right || center_x ? `align-items: ${align_right ? 'flex-end' : 'center'};` : ''].join(''); // dynamic styles for layout with spacing
 
-const spacing_context = ({
-  x,
-  y
-}) => [y ? `margin-top: -${y}px;` : '', x ? `margin-left: -${x}px;` : ''].join('');
+const spacing_context = (x, y) => [typeof x === 'number' ? `margin-left: -${x}px;` : '', typeof y === 'number' ? `margin-top: -${y}px;` : ''].join(''); // dynamic styles for x layout with spacing
+
+const spacing_x_context = (x, y) => [typeof x === 'string' ? `justify-content: ${x};` : '', typeof y === 'string' ? `align-content: ${y};` : ''].join(''); // dynamic styles for y layout with spacing
+
+const spacing_y_context = (x, y) => [typeof x === 'string' ? `align-content: ${x};` : '', typeof y === 'string' ? `justify-content: ${y};` : ''].join('');
 
 var css_248z$2 = ".nearby_n1ymrolb{position:static;margin:0;pointer-events:none;}\n.nearby_container_nc97fwj{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;position:absolute !important;pointer-events:auto !important;z-index:1;}\n.nearby_x_n1dmxc9z > .nearby_container_nc97fwj{top:0;height:100%;-webkit-align-items:flex-start;-webkit-box-align:flex-start;-ms-flex-align:flex-start;align-items:flex-start;}.nearby_x_n1dmxc9z > .nearby_container_nc97fwj > .element_ekolm46[data-height-base=fill]{height:100%;}\n.nearby_y_n91qj6k > .nearby_container_nc97fwj{left:0;width:100%;}.nearby_y_n91qj6k > .nearby_container_nc97fwj > .element_ekolm46[data-width-base=fill]{width:100%;}\n.in_back_i1ulrqav > .nearby_container_nc97fwj{z-index:0;}\n.on_left_o1xlmqx2 > .nearby_container_nc97fwj{right:100%;-webkit-box-pack:end;-webkit-justify-content:flex-end;-ms-flex-pack:end;justify-content:flex-end;}\n.on_right_okq8kx3 > .nearby_container_nc97fwj{left:100%;}\n.above_a105wjvu > .nearby_container_nc97fwj{bottom:100%;}\n.below_byr7vx7 > .nearby_container_nc97fwj{top:100%;}\n";
 styleInject(css_248z$2);
@@ -1227,8 +1232,8 @@ class Aspect_ratio extends SvelteComponent {
 
 function create_default_slot_1(ctx) {
 	let current;
-	const default_slot_template = /*#slots*/ ctx[9].default;
-	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[11], null);
+	const default_slot_template = /*#slots*/ ctx[11].default;
+	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[13], null);
 
 	return {
 		c() {
@@ -1246,8 +1251,8 @@ function create_default_slot_1(ctx) {
 		},
 		p(ctx, dirty) {
 			if (default_slot) {
-				if (default_slot.p && dirty & /*$$scope*/ 2048) {
-					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[11], dirty, null, null);
+				if (default_slot.p && dirty & /*$$scope*/ 8192) {
+					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[13], dirty, null, null);
 				}
 			}
 		},
@@ -1266,25 +1271,25 @@ function create_default_slot_1(ctx) {
 	};
 }
 
-// (16:0) <Element  bind:ref  { ...$$restProps } >
+// (25:0) <Element  bind:ref  { ...$$restProps } >
 function create_default_slot$2(ctx) {
 	let div;
 	let spacing_context_1;
 	let div_class_value;
-	let div_style_value;
 	let current;
-	const spacing_context_1_spread_levels = [/*spacings*/ ctx[3]];
 
-	let spacing_context_1_props = {
-		$$slots: { default: [create_default_slot_1] },
-		$$scope: { ctx }
-	};
-
-	for (let i = 0; i < spacing_context_1_spread_levels.length; i += 1) {
-		spacing_context_1_props = assign(spacing_context_1_props, spacing_context_1_spread_levels[i]);
-	}
-
-	spacing_context_1 = new Spacing_context({ props: spacing_context_1_props });
+	spacing_context_1 = new Spacing_context({
+			props: {
+				x: typeof /*computed_spacing_x*/ ctx[2] === "number"
+				? /*computed_spacing_x*/ ctx[2]
+				: 0,
+				y: typeof /*computed_spacing_y*/ ctx[3] === "number"
+				? /*computed_spacing_y*/ ctx[3]
+				: 0,
+				$$slots: { default: [create_default_slot_1] },
+				$$scope: { ctx }
+			}
+		});
 
 	return {
 		c() {
@@ -1301,7 +1306,7 @@ function create_default_slot$2(ctx) {
 		},
 		h() {
 			attr(div, "class", div_class_value = "" + (/*layout_class*/ ctx[1] + " " + layout));
-			attr(div, "style", div_style_value = "height: 100%; " + /*layout_style*/ ctx[2](/*$$props*/ ctx[5]) + " " + layout_style(/*$$props*/ ctx[5]) + " " + spacing_context(/*spacings*/ ctx[3]));
+			attr(div, "style", /*style*/ ctx[4]);
 		},
 		m(target, anchor) {
 			insert(target, div, anchor);
@@ -1309,11 +1314,17 @@ function create_default_slot$2(ctx) {
 			current = true;
 		},
 		p(ctx, dirty) {
-			const spacing_context_1_changes = (dirty & /*spacings*/ 8)
-			? get_spread_update(spacing_context_1_spread_levels, [get_spread_object(/*spacings*/ ctx[3])])
-			: {};
+			const spacing_context_1_changes = {};
 
-			if (dirty & /*$$scope*/ 2048) {
+			if (dirty & /*computed_spacing_x*/ 4) spacing_context_1_changes.x = typeof /*computed_spacing_x*/ ctx[2] === "number"
+			? /*computed_spacing_x*/ ctx[2]
+			: 0;
+
+			if (dirty & /*computed_spacing_y*/ 8) spacing_context_1_changes.y = typeof /*computed_spacing_y*/ ctx[3] === "number"
+			? /*computed_spacing_y*/ ctx[3]
+			: 0;
+
+			if (dirty & /*$$scope*/ 8192) {
 				spacing_context_1_changes.$$scope = { dirty, ctx };
 			}
 
@@ -1323,8 +1334,8 @@ function create_default_slot$2(ctx) {
 				attr(div, "class", div_class_value);
 			}
 
-			if (!current || dirty & /*layout_style, $$props, spacings*/ 44 && div_style_value !== (div_style_value = "height: 100%; " + /*layout_style*/ ctx[2](/*$$props*/ ctx[5]) + " " + layout_style(/*$$props*/ ctx[5]) + " " + spacing_context(/*spacings*/ ctx[3]))) {
-				attr(div, "style", div_style_value);
+			if (!current || dirty & /*style*/ 16) {
+				attr(div, "style", /*style*/ ctx[4]);
 			}
 		},
 		i(local) {
@@ -1347,10 +1358,10 @@ function create_fragment$4(ctx) {
 	let element_1;
 	let updating_ref;
 	let current;
-	const element_1_spread_levels = [/*$$restProps*/ ctx[4]];
+	const element_1_spread_levels = [/*$$restProps*/ ctx[5]];
 
 	function element_1_ref_binding(value) {
-		/*element_1_ref_binding*/ ctx[10].call(null, value);
+		/*element_1_ref_binding*/ ctx[12].call(null, value);
 	}
 
 	let element_1_props = {
@@ -1381,11 +1392,11 @@ function create_fragment$4(ctx) {
 			current = true;
 		},
 		p(ctx, [dirty]) {
-			const element_1_changes = (dirty & /*$$restProps*/ 16)
-			? get_spread_update(element_1_spread_levels, [get_spread_object(/*$$restProps*/ ctx[4])])
+			const element_1_changes = (dirty & /*$$restProps*/ 32)
+			? get_spread_update(element_1_spread_levels, [get_spread_object(/*$$restProps*/ ctx[5])])
 			: {};
 
-			if (dirty & /*$$scope, layout_class, layout_style, $$props, spacings*/ 2094) {
+			if (dirty & /*$$scope, layout_class, style, computed_spacing_x, computed_spacing_y*/ 8222) {
 				element_1_changes.$$scope = { dirty, ctx };
 			}
 
@@ -1413,13 +1424,20 @@ function create_fragment$4(ctx) {
 }
 
 function instance$4($$self, $$props, $$invalidate) {
-	let spacings;
-	const omit_props_names = ["ref","layout_class","layout_style","spacing","spacing_x","spacing_y"];
+	let computed_spacing_x;
+	let computed_spacing_y;
+	let style;
+
+	const omit_props_names = [
+		"ref","layout_class","layout_style","layout_spacing","spacing","spacing_x","spacing_y"
+	];
+
 	let $$restProps = compute_rest_props($$props, omit_props_names);
 	let { $$slots: slots = {}, $$scope } = $$props;
 	let { ref } = $$props;
 	let { layout_class } = $$props;
-	let { layout_style } = $$props;
+	let { layout_style: layout_style$1 } = $$props;
+	let { layout_spacing } = $$props;
 	let { spacing = 0 } = $$props;
 	let { spacing_x = 0 } = $$props;
 	let { spacing_y = 0 } = $$props;
@@ -1430,24 +1448,34 @@ function instance$4($$self, $$props, $$invalidate) {
 	}
 
 	$$self.$$set = $$new_props => {
-		$$invalidate(5, $$props = assign(assign({}, $$props), exclude_internal_props($$new_props)));
-		$$invalidate(4, $$restProps = compute_rest_props($$props, omit_props_names));
+		$$invalidate(14, $$props = assign(assign({}, $$props), exclude_internal_props($$new_props)));
+		$$invalidate(5, $$restProps = compute_rest_props($$props, omit_props_names));
 		if ("ref" in $$new_props) $$invalidate(0, ref = $$new_props.ref);
 		if ("layout_class" in $$new_props) $$invalidate(1, layout_class = $$new_props.layout_class);
-		if ("layout_style" in $$new_props) $$invalidate(2, layout_style = $$new_props.layout_style);
-		if ("spacing" in $$new_props) $$invalidate(6, spacing = $$new_props.spacing);
-		if ("spacing_x" in $$new_props) $$invalidate(7, spacing_x = $$new_props.spacing_x);
-		if ("spacing_y" in $$new_props) $$invalidate(8, spacing_y = $$new_props.spacing_y);
-		if ("$$scope" in $$new_props) $$invalidate(11, $$scope = $$new_props.$$scope);
+		if ("layout_style" in $$new_props) $$invalidate(6, layout_style$1 = $$new_props.layout_style);
+		if ("layout_spacing" in $$new_props) $$invalidate(7, layout_spacing = $$new_props.layout_spacing);
+		if ("spacing" in $$new_props) $$invalidate(8, spacing = $$new_props.spacing);
+		if ("spacing_x" in $$new_props) $$invalidate(9, spacing_x = $$new_props.spacing_x);
+		if ("spacing_y" in $$new_props) $$invalidate(10, spacing_y = $$new_props.spacing_y);
+		if ("$$scope" in $$new_props) $$invalidate(13, $$scope = $$new_props.$$scope);
 	};
 
 	$$self.$$.update = () => {
-		if ($$self.$$.dirty & /*spacing_x, spacing, spacing_y*/ 448) {
-			 $$invalidate(3, spacings = {
-				x: spacing_x || spacing,
-				y: spacing_y || spacing
-			});
+		if ($$self.$$.dirty & /*spacing_x, spacing*/ 768) {
+			 $$invalidate(2, computed_spacing_x = spacing_x || spacing);
 		}
+
+		if ($$self.$$.dirty & /*spacing_y, spacing*/ 1280) {
+			 $$invalidate(3, computed_spacing_y = spacing_y || spacing);
+		}
+
+		 $$invalidate(4, style = [
+			"flex-grow: 1;",
+			layout_style($$props),
+			layout_style$1($$props),
+			layout_spacing(computed_spacing_x, computed_spacing_y),
+			spacing_context(computed_spacing_x, computed_spacing_y)
+		].join(""));
 	};
 
 	$$props = exclude_internal_props($$props);
@@ -1455,10 +1483,12 @@ function instance$4($$self, $$props, $$invalidate) {
 	return [
 		ref,
 		layout_class,
-		layout_style,
-		spacings,
+		computed_spacing_x,
+		computed_spacing_y,
+		style,
 		$$restProps,
-		$$props,
+		layout_style$1,
+		layout_spacing,
 		spacing,
 		spacing_x,
 		spacing_y,
@@ -1475,10 +1505,11 @@ class Layout extends SvelteComponent {
 		init(this, options, instance$4, create_fragment$4, safe_not_equal, {
 			ref: 0,
 			layout_class: 1,
-			layout_style: 2,
-			spacing: 6,
-			spacing_x: 7,
-			spacing_y: 8
+			layout_style: 6,
+			layout_spacing: 7,
+			spacing: 8,
+			spacing_x: 9,
+			spacing_y: 10
 		});
 	}
 }
@@ -1535,7 +1566,8 @@ function create_fragment$5(ctx) {
 		/*rest_props*/ ctx[1],
 		{ class: /*class_name*/ ctx[2] },
 		{ layout_class: layout_y },
-		{ layout_style: layout_y_style }
+		{ layout_style: layout_y_style },
+		{ layout_spacing: spacing_y_context }
 	];
 
 	function layout_ref_binding(value) {
@@ -1570,12 +1602,13 @@ function create_fragment$5(ctx) {
 			current = true;
 		},
 		p(ctx, [dirty]) {
-			const layout_changes = (dirty & /*rest_props, class_name, layout_y, layout_y_style*/ 6)
+			const layout_changes = (dirty & /*rest_props, class_name, layout_y, layout_y_style, spacing_y_context*/ 6)
 			? get_spread_update(layout_spread_levels, [
 					dirty & /*rest_props*/ 2 && get_spread_object(/*rest_props*/ ctx[1]),
 					dirty & /*class_name*/ 4 && { class: /*class_name*/ ctx[2] },
 					dirty & /*layout_y*/ 0 && { layout_class: layout_y },
-					dirty & /*layout_y_style*/ 0 && { layout_style: layout_y_style }
+					dirty & /*layout_y_style*/ 0 && { layout_style: layout_y_style },
+					dirty & /*spacing_y_context*/ 0 && { layout_spacing: spacing_y_context }
 				])
 			: {};
 
@@ -1874,7 +1907,8 @@ function create_fragment$7(ctx) {
 		/*rest_props*/ ctx[1],
 		{ class: /*class_name*/ ctx[2] },
 		{ layout_class: layout_x },
-		{ layout_style: layout_x_style }
+		{ layout_style: layout_x_style },
+		{ layout_spacing: spacing_x_context }
 	];
 
 	function layout_ref_binding(value) {
@@ -1909,12 +1943,13 @@ function create_fragment$7(ctx) {
 			current = true;
 		},
 		p(ctx, [dirty]) {
-			const layout_changes = (dirty & /*rest_props, class_name, layout_x, layout_x_style*/ 6)
+			const layout_changes = (dirty & /*rest_props, class_name, layout_x, layout_x_style, spacing_x_context*/ 6)
 			? get_spread_update(layout_spread_levels, [
 					dirty & /*rest_props*/ 2 && get_spread_object(/*rest_props*/ ctx[1]),
 					dirty & /*class_name*/ 4 && { class: /*class_name*/ ctx[2] },
 					dirty & /*layout_x*/ 0 && { layout_class: layout_x },
-					dirty & /*layout_x_style*/ 0 && { layout_style: layout_x_style }
+					dirty & /*layout_x_style*/ 0 && { layout_style: layout_x_style },
+					dirty & /*spacing_x_context*/ 0 && { layout_spacing: spacing_x_context }
 				])
 			: {};
 
@@ -2704,4 +2739,4 @@ class In_front extends SvelteComponent {
 	}
 }
 
-export { Above, Aspect_ratio, Below, Box, Column, Image, In_back, In_front, On_left, On_right, Row, content, fill, format_length, length_css, max, min, px };
+export { Above, Aspect_ratio, Below, Box, Column, Image, In_back, In_front, On_left, On_right, Row, content, fill, format_length, length_css, max, min, px, space_around, space_between, space_evenly };
