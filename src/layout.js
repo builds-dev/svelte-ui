@@ -1,5 +1,6 @@
 import { css } from '@linaria/core'
 import { element } from './element'
+import { space_evenly, space_between, space_around } from './spacing.js'
 
 /*
  * styles necessary for a dom node containing one or more children (layout container)
@@ -79,7 +80,19 @@ export const layout_y_style = ({ align_bottom, center_y, align_right, center_x }
 	].join('')
 
 // dynamic styles for layout with spacing
-export const spacing_context = ({ x, y }) => [
-		y ? `margin-top: -${ y }px;` : '',
-		x ? `margin-left: -${ x }px;` : '',
+export const spacing_context = (x, y) => [
+	typeof x === 'number' ? `margin-left: -${ x }px;` : '',
+	typeof y === 'number' ? `margin-top: -${ y }px;` : ''
+].join('')
+
+// dynamic styles for x layout with spacing
+export const spacing_x_context = (x, y) => [
+	typeof x === 'string' ? `justify-content: ${x};` : '',
+	typeof y === 'string' ? `align-content: ${y};` : ''
+].join('')
+
+// dynamic styles for y layout with spacing
+export const spacing_y_context = (x, y) => [
+	typeof x === 'string' ? `align-content: ${x};` : '',
+	typeof y === 'string' ? `justify-content: ${y};` : ''
 ].join('')

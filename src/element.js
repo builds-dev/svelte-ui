@@ -7,6 +7,7 @@ import { content, length_css } from './length'
 
 // static styles
 export const element = css`
+	display: flex;
 	flex-basis: auto;
 	flex-shrink: 0;
 	position: relative;
