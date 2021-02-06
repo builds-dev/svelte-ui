@@ -13,6 +13,7 @@ export const element = css`
 	box-sizing: border-box;
 	height: auto;
 	width: auto;
+	overflow: visible;
 
 	&[data-height-base=px] {
 		height: var(--height-base-value);
@@ -22,8 +23,27 @@ export const element = css`
 	}
 `
 
+const overflow_style = (axis, clip, scroll) => clip || scroll
+	? `overflow-${axis}: ${clip ? 'hidden' : 'auto'};`
+	: ''
+
 // dynamic styles
-export const element_style = ({ height = content, width = content, padding, opacity, x, y }, context_spacing_x, context_spacing_y) =>
+export const element_style = (
+	{
+		height = content,
+		width = content,
+		padding,
+		opacity,
+		x,
+		y,
+		clip_x,
+		clip_y,
+		scroll_x,
+		scroll_y
+	},
+	context_spacing_x,
+	context_spacing_y
+) =>
 	[
 		length_css('height', height),
 		length_css('width', width),
@@ -33,5 +53,7 @@ export const element_style = ({ height = content, width = content, padding, opac
 		padding == null
 			? ''
 			: `padding: ${Array.isArray(padding) ? padding.map(n => `${n}px`).join(' ') : `${padding}px` };`,
-		x || y ? `transform: translate3d(${ x }px, ${ y }px, 0);` : ''
+		x || y ? `transform: translate3d(${ x }px, ${ y }px, 0);` : '',
+		overflow_style('x', clip_x, scroll_x),
+		overflow_style('y', clip_y, scroll_y)
 	].join('')

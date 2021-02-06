@@ -13,20 +13,10 @@ export const layout = css`
 	flex-wrap: nowrap;
 	align-items: flex-start;
 	justify-content: flex-start;
-	overflow: visible;
 `
 
-const overflow_style = (axis, clip, scroll) => clip || scroll
-	? `overflow-${axis}: ${clip ? 'hidden' : 'auto'};`
-	: ''
-
 // dynamic styles
-export const layout_style = ({ clip_x, clip_y, scroll_x, scroll_y, wrap }) =>
-	[
-		overflow_style('x', clip_x, scroll_x),
-		overflow_style('y', clip_y, scroll_y),
-		wrap ? 'flex-wrap: wrap;' : ''
-	].join(' ')
+export const layout_style = ({ wrap }) => wrap ? 'flex-wrap: wrap;' : ''
 
 // static styles for x layout
 export const layout_x = css`
