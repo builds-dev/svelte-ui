@@ -15,13 +15,6 @@ export const element = css`
 	height: auto;
 	width: auto;
 	overflow: visible;
-
-	&[data-height-base=px] {
-		height: var(--height-base-value);
-	}
-	&[data-width-base=px] {
-		width: var(--width-base-value);
-	}
 `
 
 const overflow_style = (axis, clip, scroll) => clip || scroll
@@ -41,15 +34,11 @@ export const element_style = (
 		clip_y,
 		scroll_x,
 		scroll_y
-	},
-	context_spacing_x,
-	context_spacing_y
+	}
 ) =>
 	[
 		length_css('height', height),
 		length_css('width', width),
-		context_spacing_y ? `margin-top: ${ context_spacing_y }px;` : '',
-		context_spacing_x ? `margin-left: ${ context_spacing_x }px;` : '',
 		opacity == null ? '' : `opacity: ${opacity};`,
 		padding == null
 			? ''

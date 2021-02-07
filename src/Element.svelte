@@ -1,22 +1,25 @@
 <script>
-	import Spacing_context, { get_spacing_context } from './Spacing_context.svelte'
+	import Layout_context, { get_layout_context } from './Layout_context.svelte'
 	import { element, element_style } from './element'
 	import { content, format_length } from './length'
 
 	export let ref = undefined
 	export let style = ''
-	const className = [ $$props.class || '', element ].join(' ')
-	const { context_spacing_x, context_spacing_y } = get_spacing_context()
+
+	$: height = format_length($$props.height || content)
+	$: width = format_length($$props.width || content)
+	$: props = { ...$$props, height, width }
+
+	const { style: context_style, class: context_class } = get_layout_context()
+	const className = [ $$props.class || '', context_class, element ].join(' ')
 </script>
 
 <div
 	bind:this={ ref }
 	class={ className }
-	data-height-base={ format_length($$props.height || content).base.type }
-	data-width-base={ format_length($$props.width || content).base.type }
-	style="{ element_style($$props, $context_spacing_x, $context_spacing_y) }{ style }"
+	style="{ element_style(props) }{ $context_style(props) }{ style }"
 >
-	<Spacing_context x={0} y={0}>
+	<Layout_context>
 		<slot/>
-	</Spacing_context>
+	</Layout_context>
 </div>

@@ -1,7 +1,8 @@
 <script>
 	import { css } from '@linaria/core'
 	import Element from './Element.svelte'
-	import { layout, layout_x, layout_style, layout_x_style } from './layout'
+	import Layout_context from './Layout_context.svelte'
+	import { layout, layout_x, layout_style, layout_x_style, layout_x_child } from './layout'
 	import { nearby } from './nearby'
 
 	const box = css`
@@ -34,5 +35,9 @@
 	class={ className }
 	style="{ layout_style($$props) }{ layout_x_style($$props) }{ style }"
 >
-	<slot/>
+	<Layout_context
+		context_style={layout_x_child()}
+	>
+		<slot/>
+	</Layout_context>
 </Element>
