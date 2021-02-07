@@ -922,7 +922,7 @@ function create_default_slot_1(ctx) {
     }
 
   };
-} // (32:0) <Element  bind:ref  { ...$$restProps }  class={ className }  style="{ layout_style($$props) }{ layout_x_style($$props) }{ style }" >
+} // (31:0) <Element  bind:ref  { ...$$restProps }  class={ [ $$props.class || '', box, layout_x, layout ].join(' ') }  style="{ layout_style($$props) }{ layout_x_style($$props) }{ style }" >
 
 
 function create_default_slot$1(ctx) {
@@ -992,16 +992,18 @@ function create_fragment$2(ctx) {
   let current;
   const element_1_spread_levels = [
   /*$$restProps*/
-  ctx[4], {
-    class:
-    /*className*/
-    ctx[2]
+  ctx[3], {
+    class: [
+    /*$$props*/
+    ctx[4].class || "",
+    /*box*/
+    ctx[2], layout_x, layout].join(" ")
   }, {
     style: "" + (layout_style(
     /*$$props*/
-    ctx[3]) + layout_x_style(
+    ctx[4]) + layout_x_style(
     /*$$props*/
-    ctx[3]) +
+    ctx[4]) +
     /*style*/
     ctx[1])
   }];
@@ -1052,25 +1054,27 @@ function create_fragment$2(ctx) {
 
     p(ctx, [dirty]) {
       const element_1_changes = dirty &
-      /*$$restProps, className, layout_style, $$props, layout_x_style, style*/
+      /*$$restProps, $$props, box, layout_x, layout, layout_style, layout_x_style, style*/
       30 ? get_spread_update(element_1_spread_levels, [dirty &
       /*$$restProps*/
-      16 && get_spread_object(
+      8 && get_spread_object(
       /*$$restProps*/
-      ctx[4]), dirty &
-      /*className*/
-      4 && {
-        class:
-        /*className*/
-        ctx[2]
+      ctx[3]), dirty &
+      /*$$props, box, layout_x, layout*/
+      20 && {
+        class: [
+        /*$$props*/
+        ctx[4].class || "",
+        /*box*/
+        ctx[2], layout_x, layout].join(" ")
       }, dirty &
       /*layout_style, $$props, layout_x_style, style*/
-      10 && {
+      18 && {
         style: "" + (layout_style(
         /*$$props*/
-        ctx[3]) + layout_x_style(
+        ctx[4]) + layout_x_style(
         /*$$props*/
-        ctx[3]) +
+        ctx[4]) +
         /*style*/
         ctx[1])
       }]) : {};
@@ -1129,7 +1133,6 @@ function instance$2($$self, $$props, $$invalidate) {
   let {
     style = ""
   } = $$props;
-  const className = [$$props.class || "", box, layout_x, layout].join(" ");
 
   function element_1_ref_binding(value) {
     ref = value;
@@ -1137,15 +1140,15 @@ function instance$2($$self, $$props, $$invalidate) {
   }
 
   $$self.$$set = $$new_props => {
-    $$invalidate(3, $$props = assign(assign({}, $$props), exclude_internal_props($$new_props)));
-    $$invalidate(4, $$restProps = compute_rest_props($$props, omit_props_names));
+    $$invalidate(4, $$props = assign(assign({}, $$props), exclude_internal_props($$new_props)));
+    $$invalidate(3, $$restProps = compute_rest_props($$props, omit_props_names));
     if ("ref" in $$new_props) $$invalidate(0, ref = $$new_props.ref);
     if ("style" in $$new_props) $$invalidate(1, style = $$new_props.style);
     if ("$$scope" in $$new_props) $$invalidate(7, $$scope = $$new_props.$$scope);
   };
 
   $$props = exclude_internal_props($$props);
-  return [ref, style, className, $$props, $$restProps, slots, element_1_ref_binding, $$scope];
+  return [ref, style, box, $$restProps, $$props, slots, element_1_ref_binding, $$scope];
 }
 
 class Box extends SvelteComponent {
@@ -1634,8 +1637,10 @@ function create_fragment$5(ctx) {
 	let current;
 
 	const layout_spread_levels = [
-		/*rest_props*/ ctx[1],
-		{ class: /*class_name*/ ctx[2] },
+		/*$$restProps*/ ctx[1],
+		{
+			class: [/*$$props*/ ctx[2].class || "", "column"].join(" ")
+		},
 		{ layout_class: layout_y },
 		{ layout_style: layout_y_style },
 		{ layout_spacing: spacing_y_context },
@@ -1674,10 +1679,12 @@ function create_fragment$5(ctx) {
 			current = true;
 		},
 		p(ctx, [dirty]) {
-			const layout_changes = (dirty & /*rest_props, class_name, layout_y, layout_y_style, spacing_y_context, layout_y_child*/ 6)
+			const layout_changes = (dirty & /*$$restProps, $$props, layout_y, layout_y_style, spacing_y_context, layout_y_child*/ 6)
 			? get_spread_update(layout_spread_levels, [
-					dirty & /*rest_props*/ 2 && get_spread_object(/*rest_props*/ ctx[1]),
-					dirty & /*class_name*/ 4 && { class: /*class_name*/ ctx[2] },
+					dirty & /*$$restProps*/ 2 && get_spread_object(/*$$restProps*/ ctx[1]),
+					dirty & /*$$props*/ 4 && {
+						class: [/*$$props*/ ctx[2].class || "", "column"].join(" ")
+					},
 					dirty & /*layout_y*/ 0 && { layout_class: layout_y },
 					dirty & /*layout_y_style*/ 0 && { layout_style: layout_y_style },
 					dirty & /*spacing_y_context*/ 0 && { layout_spacing: spacing_y_context },
@@ -1717,8 +1724,6 @@ function instance$5($$self, $$props, $$invalidate) {
 	let $$restProps = compute_rest_props($$props, omit_props_names);
 	let { $$slots: slots = {}, $$scope } = $$props;
 	let { ref = undefined } = $$props;
-	const { class: input_class_name, ...rest_props } = $$restProps;
-	const class_name = [input_class_name || "", "column"].join(" ");
 
 	function layout_ref_binding(value) {
 		ref = value;
@@ -1726,13 +1731,14 @@ function instance$5($$self, $$props, $$invalidate) {
 	}
 
 	$$self.$$set = $$new_props => {
-		$$props = assign(assign({}, $$props), exclude_internal_props($$new_props));
-		$$invalidate(7, $$restProps = compute_rest_props($$props, omit_props_names));
+		$$invalidate(2, $$props = assign(assign({}, $$props), exclude_internal_props($$new_props)));
+		$$invalidate(1, $$restProps = compute_rest_props($$props, omit_props_names));
 		if ("ref" in $$new_props) $$invalidate(0, ref = $$new_props.ref);
 		if ("$$scope" in $$new_props) $$invalidate(5, $$scope = $$new_props.$$scope);
 	};
 
-	return [ref, rest_props, class_name, slots, layout_ref_binding, $$scope];
+	$$props = exclude_internal_props($$props);
+	return [ref, $$restProps, $$props, slots, layout_ref_binding, $$scope];
 }
 
 class Column extends SvelteComponent {
@@ -1804,7 +1810,7 @@ function create_fragment$6(ctx) {
 	const box_spread_levels = [
 		/*$$restProps*/ ctx[5],
 		{
-			class: "" + (image + " " + (/*$$props*/ ctx[4].class || ""))
+			class: [/*$$props*/ ctx[4].class || "", image].join(" ")
 		}
 	];
 
@@ -1840,11 +1846,11 @@ function create_fragment$6(ctx) {
 			current = true;
 		},
 		p(ctx, [dirty]) {
-			const box_changes = (dirty & /*$$restProps, image, $$props*/ 48)
+			const box_changes = (dirty & /*$$restProps, $$props, image*/ 48)
 			? get_spread_update(box_spread_levels, [
 					dirty & /*$$restProps*/ 32 && get_spread_object(/*$$restProps*/ ctx[5]),
-					dirty & /*image, $$props*/ 16 && {
-						class: "" + (image + " " + (/*$$props*/ ctx[4].class || ""))
+					dirty & /*$$props, image*/ 16 && {
+						class: [/*$$props*/ ctx[4].class || "", image].join(" ")
 					}
 				])
 			: {};
@@ -1996,8 +2002,10 @@ function create_fragment$7(ctx) {
 	let current;
 
 	const layout_spread_levels = [
-		/*rest_props*/ ctx[1],
-		{ class: /*class_name*/ ctx[2] },
+		/*$$restProps*/ ctx[1],
+		{
+			class: [/*$$props*/ ctx[2].class || "", "row"].join(" ")
+		},
 		{ layout_class: layout_x },
 		{ layout_style: layout_x_style },
 		{ layout_spacing: spacing_x_context },
@@ -2036,10 +2044,12 @@ function create_fragment$7(ctx) {
 			current = true;
 		},
 		p(ctx, [dirty]) {
-			const layout_changes = (dirty & /*rest_props, class_name, layout_x, layout_x_style, spacing_x_context, layout_x_child*/ 6)
+			const layout_changes = (dirty & /*$$restProps, $$props, layout_x, layout_x_style, spacing_x_context, layout_x_child*/ 6)
 			? get_spread_update(layout_spread_levels, [
-					dirty & /*rest_props*/ 2 && get_spread_object(/*rest_props*/ ctx[1]),
-					dirty & /*class_name*/ 4 && { class: /*class_name*/ ctx[2] },
+					dirty & /*$$restProps*/ 2 && get_spread_object(/*$$restProps*/ ctx[1]),
+					dirty & /*$$props*/ 4 && {
+						class: [/*$$props*/ ctx[2].class || "", "row"].join(" ")
+					},
 					dirty & /*layout_x*/ 0 && { layout_class: layout_x },
 					dirty & /*layout_x_style*/ 0 && { layout_style: layout_x_style },
 					dirty & /*spacing_x_context*/ 0 && { layout_spacing: spacing_x_context },
@@ -2079,8 +2089,6 @@ function instance$7($$self, $$props, $$invalidate) {
 	let $$restProps = compute_rest_props($$props, omit_props_names);
 	let { $$slots: slots = {}, $$scope } = $$props;
 	let { ref = undefined } = $$props;
-	const { class: input_class_name, ...rest_props } = $$restProps;
-	const class_name = [input_class_name || "", "row"].join(" ");
 
 	function layout_ref_binding(value) {
 		ref = value;
@@ -2088,13 +2096,14 @@ function instance$7($$self, $$props, $$invalidate) {
 	}
 
 	$$self.$$set = $$new_props => {
-		$$props = assign(assign({}, $$props), exclude_internal_props($$new_props));
-		$$invalidate(7, $$restProps = compute_rest_props($$props, omit_props_names));
+		$$invalidate(2, $$props = assign(assign({}, $$props), exclude_internal_props($$new_props)));
+		$$invalidate(1, $$restProps = compute_rest_props($$props, omit_props_names));
 		if ("ref" in $$new_props) $$invalidate(0, ref = $$new_props.ref);
 		if ("$$scope" in $$new_props) $$invalidate(5, $$scope = $$new_props.$$scope);
 	};
 
-	return [ref, rest_props, class_name, slots, layout_ref_binding, $$scope];
+	$$props = exclude_internal_props($$props);
+	return [ref, $$restProps, $$props, slots, layout_ref_binding, $$scope];
 }
 
 class Row extends SvelteComponent {
