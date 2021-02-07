@@ -22,48 +22,34 @@ export const layout_style = ({ wrap }) => wrap ? 'flex-wrap: wrap;' : ''
 // static styles for x layout
 export const layout_x = css`
 	flex-direction: row;
-
-	& > ${element}[data-height-base=fill] {
-		align-self: stretch;
-	}
-
-	& > ${element}[data-width-base=fill] {
-		flex-basis: 0;
-		flex-grow: var(--width-base-value);
-	}
-
-	& > ${element}[data-height-base=content] {
-		height: auto;
-	}
-
-	& > ${element}[data-width-base=content] {
-		flex-basis: auto;
-		flex-grow: 0;
-	}
 `
+
+export const spacing_child = ({ spacing_x, spacing_y }) =>
+	[
+		spacing_y ? `margin-top: ${ spacing_y }px;` : '',
+		spacing_x ? `margin-left: ${ spacing_x }px;` : '',
+	].join('')
+
+export const layout_x_child = ({ spacing_x = 0, spacing_y = 0 } = {}) => ({ height, width }) =>
+	[
+		height.base.type === 'fill' ? `height: calc(100% - ${spacing_y}px);` : '',
+		height.base.type === 'content' ? `height: auto;` : '',
+		width.base.type === 'fill' ? `flex-basis: 0; flex-grow: ${width.base.value};` : '',
+		width.base.type === 'content' ? `flex-basis: auto; flex-grow: 0;` : ''
+	].join('')
 
 // static styles for y layout
 export const layout_y = css`
 	flex-direction: column;
-
-	& > ${element}[data-height-base=fill] {
-		flex-basis: 0;
-		flex-grow: var(--height-base-value);
-	}
-
-	& > ${element}[data-width-base=fill] {
-		align-self: stretch;
-	}
-
-	& > ${element}[data-height-base=content] {
-		flex-basis: auto;
-		flex-grow: 0;
-	}
-
-	& > ${element}[data-width-base=content] {
-		width: auto;
-	}
 `
+
+export const layout_y_child = ({ spacing_x = 0, spacing_y = 0 } = {}) => ({ height, width }) =>
+	[
+		height.base.type === 'fill' ? `flex-basis: 0; flex-grow: ${height.base.value};` : '',
+		height.base.type === 'content' ? `flex-basis: auto; flex-grow: 0;` : '',
+		width.base.type === 'fill' ? `width: calc(100% - ${spacing_x}px);` : '',
+		width.base.type === 'content' ? `width: auto;` : ''
+	].join('')
 
 // dynamic styles for x layout
 export const layout_x_style = ({ align_bottom, center_y, align_right, center_x }) =>

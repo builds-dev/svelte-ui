@@ -16,7 +16,7 @@ export const format_length = length => typeof length === 'number' ? px(length) :
 export const length_css = (property, length) => {
 	const { base, min, max } = format_length(length)
 	return [
-		`--${property}-base-value: ${ base.value || 0 }${ base.type === 'px' ? 'px' : '' };`,
+		base.type === 'px' ? `${property}: ${base.value}px;` : '',
 		min ? `min-${property}: ${ min }px;` : '',
 		max == null || max === Infinity ? '' : `max-${property}: ${ max }px;`
 	].join(' ')

@@ -1,6 +1,6 @@
 <script>
 	import Layout from './Layout.svelte'
-	import { layout_x, layout_x_style, spacing_x_context } from './layout'
+	import { layout_x, layout_x_style, layout_x_child, spacing_x_context } from './layout'
 
 	export let ref = undefined
 	const { class: input_class_name, ...rest_props } = $$restProps
@@ -14,6 +14,7 @@
 	layout_class={ layout_x }
 	layout_style={ layout_x_style }
 	layout_spacing={ spacing_x_context }
+	layout_context={ layout_x_child }
 >
 	<slot/>
 </Layout>

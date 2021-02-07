@@ -1,8 +1,11 @@
 <script>
-	import Nearby from './Nearby.svelte'
-	import { nearby_x, nearby_y } from './nearby'
+	import { in_front, nearby_z, nearby, nearby_z_child } from './nearby'
+	import Layout_context from './Layout_context.svelte'
 </script>
 
-<Nearby class="{ nearby_x } { nearby_y }">
+<Layout_context
+	context_class="{ in_front } { nearby_z } { nearby }"
+	context_style={nearby_z_child}
+>
 	<slot/>
-</Nearby>
+</Layout_context>

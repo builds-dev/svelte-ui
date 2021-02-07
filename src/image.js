@@ -5,12 +5,4 @@ export const image = css`
 		display: block;
 		object-fit: cover;
 	}
-
-	&[data-height-base=fill] > img {
-		height: 100%;
-	}
-
-	&[data-width-base=fill] > img {
-		width: 100%;
-	}
 `
