@@ -21,14 +21,13 @@
 
 <Box
 	bind:ref
-	{...$$restProps}
-	class="{ image } { $$props.class || '' }"
-	
+	{ ...$$restProps }
+	class={ [ $$props.class || '', image ].join(' ') }
 >
 	<img
 		class="{ element }"
 		{src}
-		alt={description}
+		alt={ description }
 		{style}
 	/>
 </Box>

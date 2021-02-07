@@ -26,17 +26,16 @@
 	`
 	export let ref = undefined
 	export let style = ''
-	const className = [ $$props.class || '', box, layout_x, layout ].join(' ')
 </script>
 
 <Element
 	bind:ref
 	{ ...$$restProps }
-	class={ className }
+	class={ [ $$props.class || '', box, layout_x, layout ].join(' ') }
 	style="{ layout_style($$props) }{ layout_x_style($$props) }{ style }"
 >
 	<Layout_context
-		context_style={layout_x_child()}
+		context_style={ layout_x_child() }
 	>
 		<slot/>
 	</Layout_context>

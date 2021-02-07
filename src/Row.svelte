@@ -3,14 +3,12 @@
 	import { layout_x, layout_x_style, layout_x_child, spacing_x_context } from './layout'
 
 	export let ref = undefined
-	const { class: input_class_name, ...rest_props } = $$restProps
-	const class_name = [ input_class_name || '', 'row' ].join(' ')
 </script>
 
 <Layout
 	bind:ref
-	{ ...rest_props }
-	class={ class_name }
+	{ ...$$restProps }
+	class={ [ $$props.class || '', 'row' ].join(' ') }
 	layout_class={ layout_x }
 	layout_style={ layout_x_style }
 	layout_spacing={ spacing_x_context }
