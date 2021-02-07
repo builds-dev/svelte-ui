@@ -24,7 +24,7 @@ document.body.className = `${layout} ${layout_y}`
 Object.assign(document.body.style, {
 	margin: 0,
 	padding: 0,
-	minHeight: '100%'
+	minHeight: '100vh'
 })
 
 Object.entries(suites)
