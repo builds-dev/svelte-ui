@@ -84,10 +84,6 @@ function compute_rest_props(props, keys) {
             rest[k] = props[k];
     return rest;
 }
-
-function append(target, node) {
-    target.appendChild(node);
-}
 function insert(target, node, anchor) {
     target.insertBefore(node, anchor || null);
 }
@@ -128,9 +124,6 @@ function claim_element(nodes, name, attributes, svg) {
         }
     }
     return svg ? svg_element(name) : element(name);
-}
-function set_style(node, key, value, important) {
-    node.style.setProperty(key, value, important ? 'important' : '');
 }
 
 let current_component;
@@ -412,6 +405,145 @@ class SvelteComponent {
     }
 }
 
+const length_defaults = { min: 0, max: Infinity };
+
+const fill = (portion = 1) => ({ base: { type: 'fill', value: portion }, ...length_defaults });
+Object.assign(fill, fill(1));
+
+const content = { base: { type: 'content' }, ...length_defaults };
+
+const px = value => ({ base: { type: 'px', value }, ...length_defaults });
+
+const min = value => length => ({ ...format_length(length), min: value });
+
+const max = value => length => ({ ...format_length(length), max: value });
+
+const format_length = length => typeof length === 'number' ? px(length) : length;
+
+const length_css = (property, length) => {
+	const { base, min, max } = format_length(length);
+	return [
+		base.type === 'px' ? `${property}: ${base.value}px;` : '',
+		min ? `min-${property}: ${ min }px;` : '',
+		max == null || max === Infinity ? '' : `max-${property}: ${ max }px;`
+	].join(' ')
+};
+
+function styleInject(css, ref) {
+  if ( ref === void 0 ) ref = {};
+  var insertAt = ref.insertAt;
+
+  if (!css || typeof document === 'undefined') { return; }
+
+  var head = document.head || document.getElementsByTagName('head')[0];
+  var style = document.createElement('style');
+  style.type = 'text/css';
+
+  if (insertAt === 'top') {
+    if (head.firstChild) {
+      head.insertBefore(style, head.firstChild);
+    } else {
+      head.appendChild(style);
+    }
+  } else {
+    head.appendChild(style);
+  }
+
+  if (style.styleSheet) {
+    style.styleSheet.cssText = css;
+  } else {
+    style.appendChild(document.createTextNode(css));
+  }
+}
+
+var css_248z = ".element_ekolm46{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-basis:auto;-ms-flex-preferred-size:auto;flex-basis:auto;-webkit-flex-shrink:0;-ms-flex-negative:0;flex-shrink:0;position:relative;box-sizing:border-box;height:auto;width:auto;overflow:visible;}\n";
+styleInject(css_248z);
+
+/*
+ * styles necessary for a dom node child of a layout container
+ */
+// static styles
+
+const element$1 = "element_ekolm46";
+
+const overflow_style = (axis, clip, scroll) => clip || scroll ? `overflow-${axis}: ${clip ? 'hidden' : 'auto'};` : ''; // dynamic styles
+
+
+const element_style = ({
+  height = content,
+  width = content,
+  padding,
+  opacity,
+  x,
+  y,
+  clip_x,
+  clip_y,
+  scroll_x,
+  scroll_y
+}) => [length_css('height', height), length_css('width', width), opacity == null ? '' : `opacity: ${opacity};`, padding == null ? '' : `padding: ${Array.isArray(padding) ? padding.map(n => `${n}px`).join(' ') : `${padding}px`};`, x || y ? `transform: translate3d(${x}px, ${y}px, 0);` : '', overflow_style('x', clip_x, scroll_x), overflow_style('y', clip_y, scroll_y)].join('');
+
+const space_between = 'space-between';
+const space_around = 'space-around';
+const space_evenly = 'space-evenly';
+
+var css_248z$1 = ".layout_lb7yjy4{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-wrap:nowrap;-ms-flex-wrap:nowrap;flex-wrap:nowrap;-webkit-align-items:flex-start;-webkit-box-align:flex-start;-ms-flex-align:flex-start;align-items:flex-start;-webkit-box-pack:start;-webkit-justify-content:flex-start;-ms-flex-pack:start;justify-content:flex-start;}\n.layout_x_l1m6442m{-webkit-flex-direction:row;-ms-flex-direction:row;flex-direction:row;}\n.layout_y_l8o4g34{-webkit-flex-direction:column;-ms-flex-direction:column;flex-direction:column;}\n";
+styleInject(css_248z$1);
+
+/*
+ * styles necessary for a dom node containing one or more children (layout container)
+ *
+ * a layout container must choose an axis as its basis for its layout, even if it can only contain one child
+ */
+// static styles
+
+const layout = "layout_lb7yjy4"; // dynamic styles
+
+const layout_style = ({
+  wrap
+}) => wrap ? 'flex-wrap: wrap;' : ''; // static styles for x layout
+
+const layout_x = "layout_x_l1m6442m";
+const spacing_child = ({
+  spacing_x,
+  spacing_y
+}) => [spacing_y ? `margin-top: ${spacing_y}px;` : '', spacing_x ? `margin-left: ${spacing_x}px;` : ''].join('');
+const layout_x_child = ({
+  spacing_x = 0,
+  spacing_y = 0
+} = {}) => ({
+  height,
+  width
+}) => [height.base.type === 'fill' ? `height: calc(100% - ${spacing_y}px);` : '', height.base.type === 'content' ? `height: auto;` : '', width.base.type === 'fill' ? `flex-basis: 0; flex-grow: ${width.base.value};` : '', width.base.type === 'content' ? `flex-basis: auto; flex-grow: 0;` : ''].join(''); // static styles for y layout
+
+const layout_y = "layout_y_l8o4g34";
+const layout_y_child = ({
+  spacing_x = 0,
+  spacing_y = 0
+} = {}) => ({
+  height,
+  width
+}) => [height.base.type === 'fill' ? `flex-basis: 0; flex-grow: ${height.base.value};` : '', height.base.type === 'content' ? `flex-basis: auto; flex-grow: 0;` : '', width.base.type === 'fill' ? `width: calc(100% - ${spacing_x}px);` : '', width.base.type === 'content' ? `width: auto;` : ''].join(''); // dynamic styles for x layout
+
+const layout_x_style = ({
+  align_bottom,
+  center_y,
+  align_right,
+  center_x
+}) => [align_right || center_x ? `justify-content: ${align_right ? 'flex-end' : 'center'};` : '', align_bottom || center_y ? `align-items: ${align_bottom ? 'flex-end' : 'center'};` : ''].join(''); // dynamic styles for y layout
+
+const layout_y_style = ({
+  align_bottom,
+  center_y,
+  align_right,
+  center_x
+}) => [align_bottom || center_y ? `justify-content: ${align_bottom ? 'flex-end' : 'center'};` : '', align_right || center_x ? `align-items: ${align_right ? 'flex-end' : 'center'};` : ''].join(''); // dynamic styles for layout with spacing
+
+const spacing_context = (x, y) => [typeof x === 'number' ? `margin-left: -${x}px;` : '', typeof y === 'number' ? `margin-top: -${y}px;` : ''].join(''); // dynamic styles for x layout with spacing
+
+const spacing_x_context = (x, y) => [typeof x === 'string' ? `justify-content: ${x};` : '', typeof y === 'string' ? `align-content: ${y};` : ''].join(''); // dynamic styles for y layout with spacing
+
+const spacing_y_context = (x, y) => [typeof x === 'string' ? `align-content: ${x};` : '', typeof y === 'string' ? `justify-content: ${y};` : ''].join('');
+
 const subscriber_queue = [];
 /**
  * Create a `Writable` store that allows both updating and reading by subscription.
@@ -464,7 +596,7 @@ function writable(value, start = noop) {
     return { set, update, subscribe };
 }
 
-/* src/Spacing_context.svelte generated by Svelte v3.32.0 */
+/* src/Layout_context.svelte generated by Svelte v3.32.0 */
 
 function create_fragment(ctx) {
 	let current;
@@ -509,123 +641,41 @@ function create_fragment(ctx) {
 
 const CONTEXT_KEY = Symbol();
 
-const get_spacing_context = () => getContext(CONTEXT_KEY) || {
-	context_spacing_x: writable(0),
-	context_spacing_y: writable(0)
+const get_layout_context = () => getContext(CONTEXT_KEY) || {
+	style: writable(layout_y_child()),
+	classes: ""
 };
 
-const set_spacing_context = value => setContext(CONTEXT_KEY, value);
+const set_layout_context = value => setContext(CONTEXT_KEY, value);
 
 function instance($$self, $$props, $$invalidate) {
 	let { $$slots: slots = {}, $$scope } = $$props;
-	let { x = null } = $$props;
-	let { y = null } = $$props;
-	const context_spacing_x = writable(x);
-	const context_spacing_y = writable(y);
-	set_spacing_context({ context_spacing_x, context_spacing_y });
+	let { context_class = "" } = $$props;
+	let { context_style = layout_y_child() } = $$props;
+	const store = writable();
+	set_layout_context({ style: store, class: context_class });
 
 	$$self.$$set = $$props => {
-		if ("x" in $$props) $$invalidate(0, x = $$props.x);
-		if ("y" in $$props) $$invalidate(1, y = $$props.y);
+		if ("context_class" in $$props) $$invalidate(0, context_class = $$props.context_class);
+		if ("context_style" in $$props) $$invalidate(1, context_style = $$props.context_style);
 		if ("$$scope" in $$props) $$invalidate(2, $$scope = $$props.$$scope);
 	};
 
 	$$self.$$.update = () => {
-		if ($$self.$$.dirty & /*x*/ 1) {
-			 context_spacing_x.set(x);
-		}
-
-		if ($$self.$$.dirty & /*y*/ 2) {
-			 context_spacing_y.set(y);
+		if ($$self.$$.dirty & /*context_style*/ 2) {
+			 store.set(context_style);
 		}
 	};
 
-	return [x, y, $$scope, slots];
+	return [context_class, context_style, $$scope, slots];
 }
 
-class Spacing_context extends SvelteComponent {
+class Layout_context extends SvelteComponent {
 	constructor(options) {
 		super();
-		init(this, options, instance, create_fragment, safe_not_equal, { x: 0, y: 1 });
+		init(this, options, instance, create_fragment, safe_not_equal, { context_class: 0, context_style: 1 });
 	}
 }
-
-const length_defaults = { min: 0, max: Infinity };
-
-const fill = (portion = 1) => ({ base: { type: 'fill', value: portion }, ...length_defaults });
-Object.assign(fill, fill(1));
-
-const content = { base: { type: 'content' }, ...length_defaults };
-
-const px = value => ({ base: { type: 'px', value }, ...length_defaults });
-
-const min = value => length => ({ ...format_length(length), min: value });
-
-const max = value => length => ({ ...format_length(length), max: value });
-
-const format_length = length => typeof length === 'number' ? px(length) : length;
-
-const length_css = (property, length) => {
-	const { base, min, max } = format_length(length);
-	return [
-		`--${property}-base-value: ${ base.value || 0 }${ base.type === 'px' ? 'px' : '' };`,
-		min ? `min-${property}: ${ min }px;` : '',
-		max == null || max === Infinity ? '' : `max-${property}: ${ max }px;`
-	].join(' ')
-};
-
-function styleInject(css, ref) {
-  if ( ref === void 0 ) ref = {};
-  var insertAt = ref.insertAt;
-
-  if (!css || typeof document === 'undefined') { return; }
-
-  var head = document.head || document.getElementsByTagName('head')[0];
-  var style = document.createElement('style');
-  style.type = 'text/css';
-
-  if (insertAt === 'top') {
-    if (head.firstChild) {
-      head.insertBefore(style, head.firstChild);
-    } else {
-      head.appendChild(style);
-    }
-  } else {
-    head.appendChild(style);
-  }
-
-  if (style.styleSheet) {
-    style.styleSheet.cssText = css;
-  } else {
-    style.appendChild(document.createTextNode(css));
-  }
-}
-
-var css_248z = ".element_ekolm46{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-basis:auto;-ms-flex-preferred-size:auto;flex-basis:auto;-webkit-flex-shrink:0;-ms-flex-negative:0;flex-shrink:0;position:relative;box-sizing:border-box;height:auto;width:auto;overflow:visible;}.element_ekolm46[data-height-base=px]{height:var(--height-base-value);}.element_ekolm46[data-width-base=px]{width:var(--width-base-value);}\n";
-styleInject(css_248z);
-
-/*
- * styles necessary for a dom node child of a layout container
- */
-// static styles
-
-const element$1 = "element_ekolm46";
-
-const overflow_style = (axis, clip, scroll) => clip || scroll ? `overflow-${axis}: ${clip ? 'hidden' : 'auto'};` : ''; // dynamic styles
-
-
-const element_style = ({
-  height = content,
-  width = content,
-  padding,
-  opacity,
-  x,
-  y,
-  clip_x,
-  clip_y,
-  scroll_x,
-  scroll_y
-}, context_spacing_x, context_spacing_y) => [length_css('height', height), length_css('width', width), context_spacing_y ? `margin-top: ${context_spacing_y}px;` : '', context_spacing_x ? `margin-left: ${context_spacing_x}px;` : '', opacity == null ? '' : `opacity: ${opacity};`, padding == null ? '' : `padding: ${Array.isArray(padding) ? padding.map(n => `${n}px`).join(' ') : `${padding}px`};`, x || y ? `transform: translate3d(${x}px, ${y}px, 0);` : '', overflow_style('x', clip_x, scroll_x), overflow_style('y', clip_y, scroll_y)].join('');
 
 /* src/Element.svelte generated by Svelte v3.32.0 */
 
@@ -672,16 +722,12 @@ function create_default_slot(ctx) {
 
 function create_fragment$1(ctx) {
 	let div;
-	let spacing_context;
-	let div_data_height_base_value;
-	let div_data_width_base_value;
+	let layout_context;
 	let div_style_value;
 	let current;
 
-	spacing_context = new Spacing_context({
+	layout_context = new Layout_context({
 			props: {
-				x: 0,
-				y: 0,
 				$$slots: { default: [create_default_slot] },
 				$$scope: { ctx }
 			}
@@ -690,82 +736,67 @@ function create_fragment$1(ctx) {
 	return {
 		c() {
 			div = element("div");
-			create_component(spacing_context.$$.fragment);
+			create_component(layout_context.$$.fragment);
 			this.h();
 		},
 		l(nodes) {
-			div = claim_element(nodes, "DIV", {
-				class: true,
-				"data-height-base": true,
-				"data-width-base": true,
-				style: true
-			});
-
+			div = claim_element(nodes, "DIV", { class: true, style: true });
 			var div_nodes = children(div);
-			claim_component(spacing_context.$$.fragment, div_nodes);
+			claim_component(layout_context.$$.fragment, div_nodes);
 			div_nodes.forEach(detach);
 			this.h();
 		},
 		h() {
-			attr(div, "class", /*className*/ ctx[4]);
-			attr(div, "data-height-base", div_data_height_base_value = format_length(/*$$props*/ ctx[7].height || content).base.type);
-			attr(div, "data-width-base", div_data_width_base_value = format_length(/*$$props*/ ctx[7].width || content).base.type);
-			attr(div, "style", div_style_value = "" + (element_style(/*$$props*/ ctx[7], /*$context_spacing_x*/ ctx[2], /*$context_spacing_y*/ ctx[3]) + /*style*/ ctx[1]));
+			attr(div, "class", /*className*/ ctx[5]);
+			attr(div, "style", div_style_value = "" + (element_style(/*props*/ ctx[2]) + /*$context_style*/ ctx[3](/*props*/ ctx[2]) + /*style*/ ctx[1]));
 		},
 		m(target, anchor) {
 			insert(target, div, anchor);
-			mount_component(spacing_context, div, null);
+			mount_component(layout_context, div, null);
 			/*div_binding*/ ctx[9](div);
 			current = true;
 		},
 		p(ctx, [dirty]) {
-			const spacing_context_changes = {};
+			const layout_context_changes = {};
 
 			if (dirty & /*$$scope*/ 1024) {
-				spacing_context_changes.$$scope = { dirty, ctx };
+				layout_context_changes.$$scope = { dirty, ctx };
 			}
 
-			spacing_context.$set(spacing_context_changes);
+			layout_context.$set(layout_context_changes);
 
-			if (!current || dirty & /*$$props*/ 128 && div_data_height_base_value !== (div_data_height_base_value = format_length(/*$$props*/ ctx[7].height || content).base.type)) {
-				attr(div, "data-height-base", div_data_height_base_value);
-			}
-
-			if (!current || dirty & /*$$props*/ 128 && div_data_width_base_value !== (div_data_width_base_value = format_length(/*$$props*/ ctx[7].width || content).base.type)) {
-				attr(div, "data-width-base", div_data_width_base_value);
-			}
-
-			if (!current || dirty & /*$$props, $context_spacing_x, $context_spacing_y, style*/ 142 && div_style_value !== (div_style_value = "" + (element_style(/*$$props*/ ctx[7], /*$context_spacing_x*/ ctx[2], /*$context_spacing_y*/ ctx[3]) + /*style*/ ctx[1]))) {
+			if (!current || dirty & /*props, $context_style, style*/ 14 && div_style_value !== (div_style_value = "" + (element_style(/*props*/ ctx[2]) + /*$context_style*/ ctx[3](/*props*/ ctx[2]) + /*style*/ ctx[1]))) {
 				attr(div, "style", div_style_value);
 			}
 		},
 		i(local) {
 			if (current) return;
-			transition_in(spacing_context.$$.fragment, local);
+			transition_in(layout_context.$$.fragment, local);
 			current = true;
 		},
 		o(local) {
-			transition_out(spacing_context.$$.fragment, local);
+			transition_out(layout_context.$$.fragment, local);
 			current = false;
 		},
 		d(detaching) {
 			if (detaching) detach(div);
-			destroy_component(spacing_context);
+			destroy_component(layout_context);
 			/*div_binding*/ ctx[9](null);
 		}
 	};
 }
 
 function instance$1($$self, $$props, $$invalidate) {
-	let $context_spacing_x;
-	let $context_spacing_y;
+	let height;
+	let width;
+	let props;
+	let $context_style;
 	let { $$slots: slots = {}, $$scope } = $$props;
 	let { ref = undefined } = $$props;
 	let { style = "" } = $$props;
-	const className = [$$props.class || "", element$1].join(" ");
-	const { context_spacing_x, context_spacing_y } = get_spacing_context();
-	component_subscribe($$self, context_spacing_x, value => $$invalidate(2, $context_spacing_x = value));
-	component_subscribe($$self, context_spacing_y, value => $$invalidate(3, $context_spacing_y = value));
+	const { style: context_style, class: context_class } = get_layout_context();
+	component_subscribe($$self, context_style, value => $$invalidate(3, $context_style = value));
+	const className = [$$props.class || "", context_class, element$1].join(" ");
 
 	function div_binding($$value) {
 		binding_callbacks[$$value ? "unshift" : "push"](() => {
@@ -775,10 +806,16 @@ function instance$1($$self, $$props, $$invalidate) {
 	}
 
 	$$self.$$set = $$new_props => {
-		$$invalidate(7, $$props = assign(assign({}, $$props), exclude_internal_props($$new_props)));
+		$$invalidate(12, $$props = assign(assign({}, $$props), exclude_internal_props($$new_props)));
 		if ("ref" in $$new_props) $$invalidate(0, ref = $$new_props.ref);
 		if ("style" in $$new_props) $$invalidate(1, style = $$new_props.style);
 		if ("$$scope" in $$new_props) $$invalidate(10, $$scope = $$new_props.$$scope);
+	};
+
+	$$self.$$.update = () => {
+		 $$invalidate(6, height = format_length($$props.height || content));
+		 $$invalidate(7, width = format_length($$props.width || content));
+		 $$invalidate(2, props = { ...$$props, height, width });
 	};
 
 	$$props = exclude_internal_props($$props);
@@ -786,12 +823,12 @@ function instance$1($$self, $$props, $$invalidate) {
 	return [
 		ref,
 		style,
-		$context_spacing_x,
-		$context_spacing_y,
+		props,
+		$context_style,
+		context_style,
 		className,
-		context_spacing_x,
-		context_spacing_y,
-		$$props,
+		height,
+		width,
 		slots,
 		div_binding,
 		$$scope
@@ -805,69 +842,34 @@ class Element extends SvelteComponent {
 	}
 }
 
-const space_between = 'space-between';
-const space_around = 'space-around';
-const space_evenly = 'space-evenly';
-
-var css_248z$1 = ".layout_lb7yjy4{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-wrap:nowrap;-ms-flex-wrap:nowrap;flex-wrap:nowrap;-webkit-align-items:flex-start;-webkit-box-align:flex-start;-ms-flex-align:flex-start;align-items:flex-start;-webkit-box-pack:start;-webkit-justify-content:flex-start;-ms-flex-pack:start;justify-content:flex-start;}\n.layout_x_l1m6442m{-webkit-flex-direction:row;-ms-flex-direction:row;flex-direction:row;}.layout_x_l1m6442m > .element_ekolm46[data-height-base=fill]{-webkit-align-self:stretch;-ms-flex-item-align:stretch;align-self:stretch;}.layout_x_l1m6442m > .element_ekolm46[data-width-base=fill]{-webkit-flex-basis:0;-ms-flex-preferred-size:0;flex-basis:0;-webkit-box-flex:var(--width-base-value);-webkit-flex-grow:var(--width-base-value);-ms-flex-positive:var(--width-base-value);flex-grow:var(--width-base-value);}.layout_x_l1m6442m > .element_ekolm46[data-height-base=content]{height:auto;}.layout_x_l1m6442m > .element_ekolm46[data-width-base=content]{-webkit-flex-basis:auto;-ms-flex-preferred-size:auto;flex-basis:auto;-webkit-box-flex:0;-webkit-flex-grow:0;-ms-flex-positive:0;flex-grow:0;}\n.layout_y_l8o4g34{-webkit-flex-direction:column;-ms-flex-direction:column;flex-direction:column;}.layout_y_l8o4g34 > .element_ekolm46[data-height-base=fill]{-webkit-flex-basis:0;-ms-flex-preferred-size:0;flex-basis:0;-webkit-box-flex:var(--height-base-value);-webkit-flex-grow:var(--height-base-value);-ms-flex-positive:var(--height-base-value);flex-grow:var(--height-base-value);}.layout_y_l8o4g34 > .element_ekolm46[data-width-base=fill]{-webkit-align-self:stretch;-ms-flex-item-align:stretch;align-self:stretch;}.layout_y_l8o4g34 > .element_ekolm46[data-height-base=content]{-webkit-flex-basis:auto;-ms-flex-preferred-size:auto;flex-basis:auto;-webkit-box-flex:0;-webkit-flex-grow:0;-ms-flex-positive:0;flex-grow:0;}.layout_y_l8o4g34 > .element_ekolm46[data-width-base=content]{width:auto;}\n";
-styleInject(css_248z$1);
-
-/*
- * styles necessary for a dom node containing one or more children (layout container)
- *
- * a layout container must choose an axis as its basis for its layout, even if it can only contain one child
- */
-// static styles
-
-const layout = "layout_lb7yjy4"; // dynamic styles
-
-const layout_style = ({
-  wrap
-}) => wrap ? 'flex-wrap: wrap;' : ''; // static styles for x layout
-
-const layout_x = "layout_x_l1m6442m"; // static styles for y layout
-
-const layout_y = "layout_y_l8o4g34"; // dynamic styles for x layout
-
-const layout_x_style = ({
-  align_bottom,
-  center_y,
-  align_right,
-  center_x
-}) => [align_right || center_x ? `justify-content: ${align_right ? 'flex-end' : 'center'};` : '', align_bottom || center_y ? `align-items: ${align_bottom ? 'flex-end' : 'center'};` : ''].join(''); // dynamic styles for y layout
-
-const layout_y_style = ({
-  align_bottom,
-  center_y,
-  align_right,
-  center_x
-}) => [align_bottom || center_y ? `justify-content: ${align_bottom ? 'flex-end' : 'center'};` : '', align_right || center_x ? `align-items: ${align_right ? 'flex-end' : 'center'};` : ''].join(''); // dynamic styles for layout with spacing
-
-const spacing_context = (x, y) => [typeof x === 'number' ? `margin-left: -${x}px;` : '', typeof y === 'number' ? `margin-top: -${y}px;` : ''].join(''); // dynamic styles for x layout with spacing
-
-const spacing_x_context = (x, y) => [typeof x === 'string' ? `justify-content: ${x};` : '', typeof y === 'string' ? `align-content: ${y};` : ''].join(''); // dynamic styles for y layout with spacing
-
-const spacing_y_context = (x, y) => [typeof x === 'string' ? `align-content: ${x};` : '', typeof y === 'string' ? `justify-content: ${y};` : ''].join('');
-
-var css_248z$2 = ".nearby_n1ymrolb{position:static;margin:0;pointer-events:none;}\n.nearby_container_nc97fwj{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;position:absolute !important;pointer-events:auto !important;z-index:1;}\n.nearby_x_n1dmxc9z > .nearby_container_nc97fwj{top:0;height:100%;-webkit-align-items:flex-start;-webkit-box-align:flex-start;-ms-flex-align:flex-start;align-items:flex-start;}.nearby_x_n1dmxc9z > .nearby_container_nc97fwj > .element_ekolm46[data-height-base=fill]{height:100%;}\n.nearby_y_n91qj6k > .nearby_container_nc97fwj{left:0;width:100%;}.nearby_y_n91qj6k > .nearby_container_nc97fwj > .element_ekolm46[data-width-base=fill]{width:100%;}\n.in_back_i1ulrqav > .nearby_container_nc97fwj{z-index:0;}\n.on_left_o1xlmqx2 > .nearby_container_nc97fwj{right:100%;-webkit-box-pack:end;-webkit-justify-content:flex-end;-ms-flex-pack:end;justify-content:flex-end;}\n.on_right_okq8kx3 > .nearby_container_nc97fwj{left:100%;}\n.above_a105wjvu > .nearby_container_nc97fwj{bottom:100%;}\n.below_byr7vx7 > .nearby_container_nc97fwj{top:100%;}\n";
+var css_248z$2 = ".nearby_n1ymrolb{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;position:absolute;pointer-events:none;}\n.nearby_x_nc97fwj{top:0;z-index:1;height:100%;}\n.nearby_y_n1dmxc9z{left:0;z-index:1;width:100%;}\n.nearby_z_n91qj6k{top:0;left:0;height:100%;width:100%;}\n.in_back_i1ulrqav{z-index:0;}\n.in_front_i1xlmqx2{z-index:1;}\n.on_left_okq8kx3{right:100%;-webkit-box-pack:end;-webkit-justify-content:flex-end;-ms-flex-pack:end;justify-content:flex-end;}\n.on_right_o105wjvu{left:100%;}\n.above_ayr7vx7{bottom:100%;}\n.below_b1lubls{top:100%;}\n.nearby_child_n1iosxib{pointer-events:auto;}\n";
 styleInject(css_248z$2);
 
 const nearby = "nearby_n1ymrolb";
-const nearby_container = "nearby_container_nc97fwj";
-const nearby_x = "nearby_x_n1dmxc9z";
-const nearby_y = "nearby_y_n91qj6k";
+const nearby_x = "nearby_x_nc97fwj";
+const nearby_y = "nearby_y_n1dmxc9z";
+const nearby_z = "nearby_z_n91qj6k";
 const in_back = "in_back_i1ulrqav";
-const on_left = "on_left_o1xlmqx2";
-const on_right = "on_right_okq8kx3";
-const above = "above_a105wjvu";
-const below = "below_byr7vx7";
+const in_front = "in_front_i1xlmqx2";
+const on_left = "on_left_okq8kx3";
+const on_right = "on_right_o105wjvu";
+const above = "above_ayr7vx7";
+const below = "below_b1lubls";
+const nearby_child = "nearby_child_n1iosxib";
+const nearby_x_child = ({
+  height
+}) => height.base.type === 'fill' ? 'height: 100%;' : '';
+const nearby_y_child = ({
+  width
+}) => width.base.type === 'fill' ? 'width: 100%;' : '';
+const nearby_z_child = props => `${nearby_x_child(props)}${nearby_y_child(props)}`;
 
 var css_248z$3 = ".box_b15mj1xn > :not(.nearby_n1ymrolb) ~ :not(.nearby_n1ymrolb){visibility:hidden;}.box_b15mj1xn > :not(.nearby_n1ymrolb) ~ :not(.nearby_n1ymrolb):before{content:\"Error: Box may only contain one child.\";visibility:visible;background:red;color:white;display:block;font-weight:bold;padding:30px;}.box_b15mj1xn > :not(.nearby_n1ymrolb) ~ :not(.nearby_n1ymrolb) ~ :not(.nearby_n1ymrolb):before{display:none;}\n";
 styleInject(css_248z$3);
 
 /* src/Box.svelte generated by Svelte v3.32.0 */
 
-function create_default_slot$1(ctx) {
+function create_default_slot_1(ctx) {
   let current;
   const default_slot_template =
   /*#slots*/
@@ -917,6 +919,68 @@ function create_default_slot$1(ctx) {
 
     d(detaching) {
       if (default_slot) default_slot.d(detaching);
+    }
+
+  };
+} // (32:0) <Element  bind:ref  { ...$$restProps }  class={ className }  style="{ layout_style($$props) }{ layout_x_style($$props) }{ style }" >
+
+
+function create_default_slot$1(ctx) {
+  let layout_context;
+  let current;
+  layout_context = new Layout_context({
+    props: {
+      context_style: layout_x_child(),
+      $$slots: {
+        default: [create_default_slot_1]
+      },
+      $$scope: {
+        ctx
+      }
+    }
+  });
+  return {
+    c() {
+      create_component(layout_context.$$.fragment);
+    },
+
+    l(nodes) {
+      claim_component(layout_context.$$.fragment, nodes);
+    },
+
+    m(target, anchor) {
+      mount_component(layout_context, target, anchor);
+      current = true;
+    },
+
+    p(ctx, dirty) {
+      const layout_context_changes = {};
+
+      if (dirty &
+      /*$$scope*/
+      128) {
+        layout_context_changes.$$scope = {
+          dirty,
+          ctx
+        };
+      }
+
+      layout_context.$set(layout_context_changes);
+    },
+
+    i(local) {
+      if (current) return;
+      transition_in(layout_context.$$.fragment, local);
+      current = true;
+    },
+
+    o(local) {
+      transition_out(layout_context.$$.fragment, local);
+      current = false;
+    },
+
+    d(detaching) {
+      destroy_component(layout_context, detaching);
     }
 
   };
@@ -1230,10 +1294,10 @@ class Aspect_ratio extends SvelteComponent {
 
 /* src/Layout.svelte generated by Svelte v3.32.0 */
 
-function create_default_slot_1(ctx) {
+function create_default_slot_1$1(ctx) {
 	let current;
-	const default_slot_template = /*#slots*/ ctx[11].default;
-	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[13], null);
+	const default_slot_template = /*#slots*/ ctx[13].default;
+	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[16], null);
 
 	return {
 		c() {
@@ -1251,8 +1315,8 @@ function create_default_slot_1(ctx) {
 		},
 		p(ctx, dirty) {
 			if (default_slot) {
-				if (default_slot.p && dirty & /*$$scope*/ 8192) {
-					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[13], dirty, null, null);
+				if (default_slot.p && dirty & /*$$scope*/ 65536) {
+					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[16], dirty, null, null);
 				}
 			}
 		},
@@ -1271,22 +1335,17 @@ function create_default_slot_1(ctx) {
 	};
 }
 
-// (25:0) <Element  bind:ref  { ...$$restProps } >
+// (35:0) <Element  bind:ref  { ...$$restProps } >
 function create_default_slot$2(ctx) {
 	let div;
-	let spacing_context_1;
+	let layout_context_1;
 	let div_class_value;
 	let current;
 
-	spacing_context_1 = new Spacing_context({
+	layout_context_1 = new Layout_context({
 			props: {
-				x: typeof /*computed_spacing_x*/ ctx[2] === "number"
-				? /*computed_spacing_x*/ ctx[2]
-				: 0,
-				y: typeof /*computed_spacing_y*/ ctx[3] === "number"
-				? /*computed_spacing_y*/ ctx[3]
-				: 0,
-				$$slots: { default: [create_default_slot_1] },
+				context_style: /*func*/ ctx[14],
+				$$slots: { default: [create_default_slot_1$1] },
 				$$scope: { ctx }
 			}
 		});
@@ -1294,62 +1353,55 @@ function create_default_slot$2(ctx) {
 	return {
 		c() {
 			div = element("div");
-			create_component(spacing_context_1.$$.fragment);
+			create_component(layout_context_1.$$.fragment);
 			this.h();
 		},
 		l(nodes) {
 			div = claim_element(nodes, "DIV", { class: true, style: true });
 			var div_nodes = children(div);
-			claim_component(spacing_context_1.$$.fragment, div_nodes);
+			claim_component(layout_context_1.$$.fragment, div_nodes);
 			div_nodes.forEach(detach);
 			this.h();
 		},
 		h() {
 			attr(div, "class", div_class_value = "" + (/*layout_class*/ ctx[1] + " " + layout));
-			attr(div, "style", /*style*/ ctx[4]);
+			attr(div, "style", /*style*/ ctx[3]);
 		},
 		m(target, anchor) {
 			insert(target, div, anchor);
-			mount_component(spacing_context_1, div, null);
+			mount_component(layout_context_1, div, null);
 			current = true;
 		},
 		p(ctx, dirty) {
-			const spacing_context_1_changes = {};
+			const layout_context_1_changes = {};
+			if (dirty & /*context_values, layout_context*/ 20) layout_context_1_changes.context_style = /*func*/ ctx[14];
 
-			if (dirty & /*computed_spacing_x*/ 4) spacing_context_1_changes.x = typeof /*computed_spacing_x*/ ctx[2] === "number"
-			? /*computed_spacing_x*/ ctx[2]
-			: 0;
-
-			if (dirty & /*computed_spacing_y*/ 8) spacing_context_1_changes.y = typeof /*computed_spacing_y*/ ctx[3] === "number"
-			? /*computed_spacing_y*/ ctx[3]
-			: 0;
-
-			if (dirty & /*$$scope*/ 8192) {
-				spacing_context_1_changes.$$scope = { dirty, ctx };
+			if (dirty & /*$$scope*/ 65536) {
+				layout_context_1_changes.$$scope = { dirty, ctx };
 			}
 
-			spacing_context_1.$set(spacing_context_1_changes);
+			layout_context_1.$set(layout_context_1_changes);
 
 			if (!current || dirty & /*layout_class*/ 2 && div_class_value !== (div_class_value = "" + (/*layout_class*/ ctx[1] + " " + layout))) {
 				attr(div, "class", div_class_value);
 			}
 
-			if (!current || dirty & /*style*/ 16) {
-				attr(div, "style", /*style*/ ctx[4]);
+			if (!current || dirty & /*style*/ 8) {
+				attr(div, "style", /*style*/ ctx[3]);
 			}
 		},
 		i(local) {
 			if (current) return;
-			transition_in(spacing_context_1.$$.fragment, local);
+			transition_in(layout_context_1.$$.fragment, local);
 			current = true;
 		},
 		o(local) {
-			transition_out(spacing_context_1.$$.fragment, local);
+			transition_out(layout_context_1.$$.fragment, local);
 			current = false;
 		},
 		d(detaching) {
 			if (detaching) detach(div);
-			destroy_component(spacing_context_1);
+			destroy_component(layout_context_1);
 		}
 	};
 }
@@ -1361,7 +1413,7 @@ function create_fragment$4(ctx) {
 	const element_1_spread_levels = [/*$$restProps*/ ctx[5]];
 
 	function element_1_ref_binding(value) {
-		/*element_1_ref_binding*/ ctx[12].call(null, value);
+		/*element_1_ref_binding*/ ctx[15].call(null, value);
 	}
 
 	let element_1_props = {
@@ -1396,7 +1448,7 @@ function create_fragment$4(ctx) {
 			? get_spread_update(element_1_spread_levels, [get_spread_object(/*$$restProps*/ ctx[5])])
 			: {};
 
-			if (dirty & /*$$scope, layout_class, style, computed_spacing_x, computed_spacing_y*/ 8222) {
+			if (dirty & /*$$scope, layout_class, style, context_values, layout_context*/ 65566) {
 				element_1_changes.$$scope = { dirty, ctx };
 			}
 
@@ -1427,9 +1479,10 @@ function instance$4($$self, $$props, $$invalidate) {
 	let computed_spacing_x;
 	let computed_spacing_y;
 	let style;
+	let context_values;
 
 	const omit_props_names = [
-		"ref","layout_class","layout_style","layout_spacing","spacing","spacing_x","spacing_y"
+		"ref","layout_class","layout_style","layout_spacing","layout_context","spacing","spacing_x","spacing_y"
 	];
 
 	let $$restProps = compute_rest_props($$props, omit_props_names);
@@ -1438,9 +1491,11 @@ function instance$4($$self, $$props, $$invalidate) {
 	let { layout_class } = $$props;
 	let { layout_style: layout_style$1 } = $$props;
 	let { layout_spacing } = $$props;
+	let { layout_context } = $$props;
 	let { spacing = 0 } = $$props;
 	let { spacing_x = 0 } = $$props;
 	let { spacing_y = 0 } = $$props;
+	const func = props => `${spacing_child(context_values)}${layout_context(context_values)(props)}`;
 
 	function element_1_ref_binding(value) {
 		ref = value;
@@ -1448,34 +1503,46 @@ function instance$4($$self, $$props, $$invalidate) {
 	}
 
 	$$self.$$set = $$new_props => {
-		$$invalidate(14, $$props = assign(assign({}, $$props), exclude_internal_props($$new_props)));
+		$$invalidate(17, $$props = assign(assign({}, $$props), exclude_internal_props($$new_props)));
 		$$invalidate(5, $$restProps = compute_rest_props($$props, omit_props_names));
 		if ("ref" in $$new_props) $$invalidate(0, ref = $$new_props.ref);
 		if ("layout_class" in $$new_props) $$invalidate(1, layout_class = $$new_props.layout_class);
 		if ("layout_style" in $$new_props) $$invalidate(6, layout_style$1 = $$new_props.layout_style);
 		if ("layout_spacing" in $$new_props) $$invalidate(7, layout_spacing = $$new_props.layout_spacing);
+		if ("layout_context" in $$new_props) $$invalidate(2, layout_context = $$new_props.layout_context);
 		if ("spacing" in $$new_props) $$invalidate(8, spacing = $$new_props.spacing);
 		if ("spacing_x" in $$new_props) $$invalidate(9, spacing_x = $$new_props.spacing_x);
 		if ("spacing_y" in $$new_props) $$invalidate(10, spacing_y = $$new_props.spacing_y);
-		if ("$$scope" in $$new_props) $$invalidate(13, $$scope = $$new_props.$$scope);
+		if ("$$scope" in $$new_props) $$invalidate(16, $$scope = $$new_props.$$scope);
 	};
 
 	$$self.$$.update = () => {
 		if ($$self.$$.dirty & /*spacing_x, spacing*/ 768) {
-			 $$invalidate(2, computed_spacing_x = spacing_x || spacing);
+			 $$invalidate(11, computed_spacing_x = spacing_x || spacing);
 		}
 
 		if ($$self.$$.dirty & /*spacing_y, spacing*/ 1280) {
-			 $$invalidate(3, computed_spacing_y = spacing_y || spacing);
+			 $$invalidate(12, computed_spacing_y = spacing_y || spacing);
 		}
 
-		 $$invalidate(4, style = [
+		 $$invalidate(3, style = [
 			"flex-grow: 1;",
 			layout_style($$props),
 			layout_style$1($$props),
 			layout_spacing(computed_spacing_x, computed_spacing_y),
 			spacing_context(computed_spacing_x, computed_spacing_y)
 		].join(""));
+
+		if ($$self.$$.dirty & /*computed_spacing_x, computed_spacing_y*/ 6144) {
+			 $$invalidate(4, context_values = {
+				spacing_x: typeof computed_spacing_x === "number"
+				? computed_spacing_x
+				: 0,
+				spacing_y: typeof computed_spacing_y === "number"
+				? computed_spacing_y
+				: 0
+			});
+		}
 	};
 
 	$$props = exclude_internal_props($$props);
@@ -1483,16 +1550,19 @@ function instance$4($$self, $$props, $$invalidate) {
 	return [
 		ref,
 		layout_class,
-		computed_spacing_x,
-		computed_spacing_y,
+		layout_context,
 		style,
+		context_values,
 		$$restProps,
 		layout_style$1,
 		layout_spacing,
 		spacing,
 		spacing_x,
 		spacing_y,
+		computed_spacing_x,
+		computed_spacing_y,
 		slots,
+		func,
 		element_1_ref_binding,
 		$$scope
 	];
@@ -1507,6 +1577,7 @@ class Layout extends SvelteComponent {
 			layout_class: 1,
 			layout_style: 6,
 			layout_spacing: 7,
+			layout_context: 2,
 			spacing: 8,
 			spacing_x: 9,
 			spacing_y: 10
@@ -1567,7 +1638,8 @@ function create_fragment$5(ctx) {
 		{ class: /*class_name*/ ctx[2] },
 		{ layout_class: layout_y },
 		{ layout_style: layout_y_style },
-		{ layout_spacing: spacing_y_context }
+		{ layout_spacing: spacing_y_context },
+		{ layout_context: layout_y_child }
 	];
 
 	function layout_ref_binding(value) {
@@ -1602,13 +1674,14 @@ function create_fragment$5(ctx) {
 			current = true;
 		},
 		p(ctx, [dirty]) {
-			const layout_changes = (dirty & /*rest_props, class_name, layout_y, layout_y_style, spacing_y_context*/ 6)
+			const layout_changes = (dirty & /*rest_props, class_name, layout_y, layout_y_style, spacing_y_context, layout_y_child*/ 6)
 			? get_spread_update(layout_spread_levels, [
 					dirty & /*rest_props*/ 2 && get_spread_object(/*rest_props*/ ctx[1]),
 					dirty & /*class_name*/ 4 && { class: /*class_name*/ ctx[2] },
 					dirty & /*layout_y*/ 0 && { layout_class: layout_y },
 					dirty & /*layout_y_style*/ 0 && { layout_style: layout_y_style },
-					dirty & /*spacing_y_context*/ 0 && { layout_spacing: spacing_y_context }
+					dirty & /*spacing_y_context*/ 0 && { layout_spacing: spacing_y_context },
+					dirty & /*layout_y_child*/ 0 && { layout_context: layout_y_child }
 				])
 			: {};
 
@@ -1669,7 +1742,7 @@ class Column extends SvelteComponent {
 	}
 }
 
-var css_248z$4 = ".image_i1b6qkac > img{display:block;object-fit:cover;}.image_i1b6qkac[data-height-base=fill] > img{height:100%;}.image_i1b6qkac[data-width-base=fill] > img{width:100%;}\n";
+var css_248z$4 = ".image_i1b6qkac > img{display:block;object-fit:cover;}\n";
 styleInject(css_248z$4);
 
 const image = "image_i1b6qkac";
@@ -1699,7 +1772,7 @@ function create_default_slot$4(ctx) {
 			attr(img, "class", element$1);
 			if (img.src !== (img_src_value = /*src*/ ctx[1])) attr(img, "src", img_src_value);
 			attr(img, "alt", /*description*/ ctx[2]);
-			set_style(img, "object-position", /*origin_x*/ ctx[3] * 100 + "% " + /*origin_y*/ ctx[4] * 100 + "%");
+			attr(img, "style", /*style*/ ctx[3]);
 		},
 		m(target, anchor) {
 			insert(target, img, anchor);
@@ -1713,8 +1786,8 @@ function create_default_slot$4(ctx) {
 				attr(img, "alt", /*description*/ ctx[2]);
 			}
 
-			if (dirty & /*origin_x, origin_y*/ 24) {
-				set_style(img, "object-position", /*origin_x*/ ctx[3] * 100 + "% " + /*origin_y*/ ctx[4] * 100 + "%");
+			if (dirty & /*style*/ 8) {
+				attr(img, "style", /*style*/ ctx[3]);
 			}
 		},
 		d(detaching) {
@@ -1731,12 +1804,12 @@ function create_fragment$6(ctx) {
 	const box_spread_levels = [
 		/*$$restProps*/ ctx[5],
 		{
-			class: "" + (image + " " + (/*$$props*/ ctx[6].class || ""))
+			class: "" + (image + " " + (/*$$props*/ ctx[4].class || ""))
 		}
 	];
 
 	function box_ref_binding(value) {
-		/*box_ref_binding*/ ctx[7].call(null, value);
+		/*box_ref_binding*/ ctx[10].call(null, value);
 	}
 
 	let box_props = {
@@ -1767,16 +1840,16 @@ function create_fragment$6(ctx) {
 			current = true;
 		},
 		p(ctx, [dirty]) {
-			const box_changes = (dirty & /*$$restProps, image, $$props*/ 96)
+			const box_changes = (dirty & /*$$restProps, image, $$props*/ 48)
 			? get_spread_update(box_spread_levels, [
 					dirty & /*$$restProps*/ 32 && get_spread_object(/*$$restProps*/ ctx[5]),
-					dirty & /*image, $$props*/ 64 && {
-						class: "" + (image + " " + (/*$$props*/ ctx[6].class || ""))
+					dirty & /*image, $$props*/ 16 && {
+						class: "" + (image + " " + (/*$$props*/ ctx[4].class || ""))
 					}
 				])
 			: {};
 
-			if (dirty & /*$$scope, src, description, origin_x, origin_y*/ 286) {
+			if (dirty & /*$$scope, src, description, style*/ 2062) {
 				box_changes.$$scope = { dirty, ctx };
 			}
 
@@ -1804,6 +1877,9 @@ function create_fragment$6(ctx) {
 }
 
 function instance$6($$self, $$props, $$invalidate) {
+	let height;
+	let width;
+	let style;
 	const omit_props_names = ["ref","src","description","origin_x","origin_y"];
 	let $$restProps = compute_rest_props($$props, omit_props_names);
 	let { ref = undefined } = $$props;
@@ -1818,13 +1894,26 @@ function instance$6($$self, $$props, $$invalidate) {
 	}
 
 	$$self.$$set = $$new_props => {
-		$$invalidate(6, $$props = assign(assign({}, $$props), exclude_internal_props($$new_props)));
+		$$invalidate(4, $$props = assign(assign({}, $$props), exclude_internal_props($$new_props)));
 		$$invalidate(5, $$restProps = compute_rest_props($$props, omit_props_names));
 		if ("ref" in $$new_props) $$invalidate(0, ref = $$new_props.ref);
 		if ("src" in $$new_props) $$invalidate(1, src = $$new_props.src);
 		if ("description" in $$new_props) $$invalidate(2, description = $$new_props.description);
-		if ("origin_x" in $$new_props) $$invalidate(3, origin_x = $$new_props.origin_x);
-		if ("origin_y" in $$new_props) $$invalidate(4, origin_y = $$new_props.origin_y);
+		if ("origin_x" in $$new_props) $$invalidate(6, origin_x = $$new_props.origin_x);
+		if ("origin_y" in $$new_props) $$invalidate(7, origin_y = $$new_props.origin_y);
+	};
+
+	$$self.$$.update = () => {
+		 $$invalidate(8, height = format_length($$props.height || content));
+		 $$invalidate(9, width = format_length($$props.width || content));
+
+		if ($$self.$$.dirty & /*origin_x, origin_y, height, width*/ 960) {
+			 $$invalidate(3, style = [
+				`object-position: ${origin_x * 100}% ${origin_y * 100}%;`,
+				height.base.type === "fill" ? `height: 100%;` : "",
+				width.base.type === "fill" ? `width: 100%;` : ""
+			].join(""));
+		}
 	};
 
 	$$props = exclude_internal_props($$props);
@@ -1833,10 +1922,13 @@ function instance$6($$self, $$props, $$invalidate) {
 		ref,
 		src,
 		description,
+		style,
+		$$props,
+		$$restProps,
 		origin_x,
 		origin_y,
-		$$restProps,
-		$$props,
+		height,
+		width,
 		box_ref_binding
 	];
 }
@@ -1849,8 +1941,8 @@ class Image extends SvelteComponent {
 			ref: 0,
 			src: 1,
 			description: 2,
-			origin_x: 3,
-			origin_y: 4
+			origin_x: 6,
+			origin_y: 7
 		});
 	}
 }
@@ -1908,7 +2000,8 @@ function create_fragment$7(ctx) {
 		{ class: /*class_name*/ ctx[2] },
 		{ layout_class: layout_x },
 		{ layout_style: layout_x_style },
-		{ layout_spacing: spacing_x_context }
+		{ layout_spacing: spacing_x_context },
+		{ layout_context: layout_x_child }
 	];
 
 	function layout_ref_binding(value) {
@@ -1943,13 +2036,14 @@ function create_fragment$7(ctx) {
 			current = true;
 		},
 		p(ctx, [dirty]) {
-			const layout_changes = (dirty & /*rest_props, class_name, layout_x, layout_x_style, spacing_x_context*/ 6)
+			const layout_changes = (dirty & /*rest_props, class_name, layout_x, layout_x_style, spacing_x_context, layout_x_child*/ 6)
 			? get_spread_update(layout_spread_levels, [
 					dirty & /*rest_props*/ 2 && get_spread_object(/*rest_props*/ ctx[1]),
 					dirty & /*class_name*/ 4 && { class: /*class_name*/ ctx[2] },
 					dirty & /*layout_x*/ 0 && { layout_class: layout_x },
 					dirty & /*layout_x_style*/ 0 && { layout_style: layout_x_style },
-					dirty & /*spacing_x_context*/ 0 && { layout_spacing: spacing_x_context }
+					dirty & /*spacing_x_context*/ 0 && { layout_spacing: spacing_x_context },
+					dirty & /*layout_x_child*/ 0 && { layout_context: layout_x_child }
 				])
 			: {};
 
@@ -2012,54 +2106,30 @@ class Row extends SvelteComponent {
 
 /* src/Nearby.svelte generated by Svelte v3.32.0 */
 
-function create_fragment$8(ctx) {
-	let div1;
-	let div0;
-	let div1_class_value;
+function create_default_slot$6(ctx) {
 	let current;
 	const default_slot_template = /*#slots*/ ctx[2].default;
-	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[1], null);
+	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[3], null);
 
 	return {
 		c() {
-			div1 = element("div");
-			div0 = element("div");
 			if (default_slot) default_slot.c();
-			this.h();
 		},
 		l(nodes) {
-			div1 = claim_element(nodes, "DIV", { class: true });
-			var div1_nodes = children(div1);
-			div0 = claim_element(div1_nodes, "DIV", { class: true });
-			var div0_nodes = children(div0);
-			if (default_slot) default_slot.l(div0_nodes);
-			div0_nodes.forEach(detach);
-			div1_nodes.forEach(detach);
-			this.h();
-		},
-		h() {
-			attr(div0, "class", nearby_container);
-			attr(div1, "class", div1_class_value = "" + (nearby + " " + /*$$props*/ ctx[0].class));
+			if (default_slot) default_slot.l(nodes);
 		},
 		m(target, anchor) {
-			insert(target, div1, anchor);
-			append(div1, div0);
-
 			if (default_slot) {
-				default_slot.m(div0, null);
+				default_slot.m(target, anchor);
 			}
 
 			current = true;
 		},
-		p(ctx, [dirty]) {
+		p(ctx, dirty) {
 			if (default_slot) {
-				if (default_slot.p && dirty & /*$$scope*/ 2) {
-					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[1], dirty, null, null);
+				if (default_slot.p && dirty & /*$$scope*/ 8) {
+					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[3], dirty, null, null);
 				}
-			}
-
-			if (!current || dirty & /*$$props*/ 1 && div1_class_value !== (div1_class_value = "" + (nearby + " " + /*$$props*/ ctx[0].class))) {
-				attr(div1, "class", div1_class_value);
 			}
 		},
 		i(local) {
@@ -2072,34 +2142,101 @@ function create_fragment$8(ctx) {
 			current = false;
 		},
 		d(detaching) {
-			if (detaching) detach(div1);
 			if (default_slot) default_slot.d(detaching);
+		}
+	};
+}
+
+function create_fragment$8(ctx) {
+	let div;
+	let layout_context;
+	let div_class_value;
+	let current;
+
+	layout_context = new Layout_context({
+			props: {
+				context_class: nearby_child,
+				context_style: /*context_style*/ ctx[0],
+				$$slots: { default: [create_default_slot$6] },
+				$$scope: { ctx }
+			}
+		});
+
+	return {
+		c() {
+			div = element("div");
+			create_component(layout_context.$$.fragment);
+			this.h();
+		},
+		l(nodes) {
+			div = claim_element(nodes, "DIV", { class: true });
+			var div_nodes = children(div);
+			claim_component(layout_context.$$.fragment, div_nodes);
+			div_nodes.forEach(detach);
+			this.h();
+		},
+		h() {
+			attr(div, "class", div_class_value = "" + (nearby + " " + /*$$props*/ ctx[1].class));
+		},
+		m(target, anchor) {
+			insert(target, div, anchor);
+			mount_component(layout_context, div, null);
+			current = true;
+		},
+		p(ctx, [dirty]) {
+			const layout_context_changes = {};
+			if (dirty & /*context_style*/ 1) layout_context_changes.context_style = /*context_style*/ ctx[0];
+
+			if (dirty & /*$$scope*/ 8) {
+				layout_context_changes.$$scope = { dirty, ctx };
+			}
+
+			layout_context.$set(layout_context_changes);
+
+			if (!current || dirty & /*$$props*/ 2 && div_class_value !== (div_class_value = "" + (nearby + " " + /*$$props*/ ctx[1].class))) {
+				attr(div, "class", div_class_value);
+			}
+		},
+		i(local) {
+			if (current) return;
+			transition_in(layout_context.$$.fragment, local);
+			current = true;
+		},
+		o(local) {
+			transition_out(layout_context.$$.fragment, local);
+			current = false;
+		},
+		d(detaching) {
+			if (detaching) detach(div);
+			destroy_component(layout_context);
 		}
 	};
 }
 
 function instance$8($$self, $$props, $$invalidate) {
 	let { $$slots: slots = {}, $$scope } = $$props;
+	let { context_style } = $$props;
 
 	$$self.$$set = $$new_props => {
-		$$invalidate(0, $$props = assign(assign({}, $$props), exclude_internal_props($$new_props)));
-		if ("$$scope" in $$new_props) $$invalidate(1, $$scope = $$new_props.$$scope);
+		$$invalidate(1, $$props = assign(assign({}, $$props), exclude_internal_props($$new_props)));
+		if ("context_style" in $$new_props) $$invalidate(0, context_style = $$new_props.context_style);
+		if ("$$scope" in $$new_props) $$invalidate(3, $$scope = $$new_props.$$scope);
 	};
 
 	$$props = exclude_internal_props($$props);
-	return [$$props, $$scope, slots];
+	return [context_style, $$props, slots, $$scope];
 }
 
 class Nearby extends SvelteComponent {
 	constructor(options) {
 		super();
-		init(this, options, instance$8, create_fragment$8, safe_not_equal, {});
+		init(this, options, instance$8, create_fragment$8, safe_not_equal, { context_style: 0 });
 	}
 }
 
 /* src/Above.svelte generated by Svelte v3.32.0 */
 
-function create_default_slot$6(ctx) {
+function create_default_slot$7(ctx) {
 	let current;
 	const default_slot_template = /*#slots*/ ctx[0].default;
 	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[1], null);
@@ -2146,8 +2283,9 @@ function create_fragment$9(ctx) {
 
 	nearby = new Nearby({
 			props: {
-				class: "" + (nearby_y + " " + above),
-				$$slots: { default: [create_default_slot$6] },
+				class: "" + (above + " " + nearby_y),
+				context_style: nearby_y_child,
+				$$slots: { default: [create_default_slot$7] },
 				$$scope: { ctx }
 			}
 		});
@@ -2206,7 +2344,7 @@ class Above extends SvelteComponent {
 
 /* src/Below.svelte generated by Svelte v3.32.0 */
 
-function create_default_slot$7(ctx) {
+function create_default_slot$8(ctx) {
 	let current;
 	const default_slot_template = /*#slots*/ ctx[0].default;
 	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[1], null);
@@ -2253,8 +2391,9 @@ function create_fragment$a(ctx) {
 
 	nearby = new Nearby({
 			props: {
-				class: "" + (nearby_y + " " + below),
-				$$slots: { default: [create_default_slot$7] },
+				class: "" + (below + " " + nearby_y),
+				context_style: nearby_y_child,
+				$$slots: { default: [create_default_slot$8] },
 				$$scope: { ctx }
 			}
 		});
@@ -2313,7 +2452,7 @@ class Below extends SvelteComponent {
 
 /* src/On_left.svelte generated by Svelte v3.32.0 */
 
-function create_default_slot$8(ctx) {
+function create_default_slot$9(ctx) {
 	let current;
 	const default_slot_template = /*#slots*/ ctx[0].default;
 	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[1], null);
@@ -2360,8 +2499,9 @@ function create_fragment$b(ctx) {
 
 	nearby = new Nearby({
 			props: {
-				class: "" + (nearby_x + " " + on_left),
-				$$slots: { default: [create_default_slot$8] },
+				class: "" + (on_left + " " + nearby_x),
+				context_style: nearby_x_child,
+				$$slots: { default: [create_default_slot$9] },
 				$$scope: { ctx }
 			}
 		});
@@ -2420,7 +2560,7 @@ class On_left extends SvelteComponent {
 
 /* src/On_right.svelte generated by Svelte v3.32.0 */
 
-function create_default_slot$9(ctx) {
+function create_default_slot$a(ctx) {
 	let current;
 	const default_slot_template = /*#slots*/ ctx[0].default;
 	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[1], null);
@@ -2467,8 +2607,9 @@ function create_fragment$c(ctx) {
 
 	nearby = new Nearby({
 			props: {
-				class: "" + (nearby_x + " " + on_right),
-				$$slots: { default: [create_default_slot$9] },
+				class: "" + (on_right + " " + nearby_x),
+				context_style: nearby_x_child,
+				$$slots: { default: [create_default_slot$a] },
 				$$scope: { ctx }
 			}
 		});
@@ -2527,7 +2668,7 @@ class On_right extends SvelteComponent {
 
 /* src/In_back.svelte generated by Svelte v3.32.0 */
 
-function create_default_slot$a(ctx) {
+function create_default_slot$b(ctx) {
 	let current;
 	const default_slot_template = /*#slots*/ ctx[0].default;
 	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[1], null);
@@ -2574,8 +2715,9 @@ function create_fragment$d(ctx) {
 
 	nearby = new Nearby({
 			props: {
-				class: "" + (nearby_x + " " + nearby_y + " " + in_back),
-				$$slots: { default: [create_default_slot$a] },
+				class: "" + (in_back + " " + nearby_z),
+				context_style: nearby_z_child,
+				$$slots: { default: [create_default_slot$b] },
 				$$scope: { ctx }
 			}
 		});
@@ -2634,7 +2776,7 @@ class In_back extends SvelteComponent {
 
 /* src/In_front.svelte generated by Svelte v3.32.0 */
 
-function create_default_slot$b(ctx) {
+function create_default_slot$c(ctx) {
 	let current;
 	const default_slot_template = /*#slots*/ ctx[0].default;
 	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[1], null);
@@ -2676,48 +2818,49 @@ function create_default_slot$b(ctx) {
 }
 
 function create_fragment$e(ctx) {
-	let nearby;
+	let layout_context;
 	let current;
 
-	nearby = new Nearby({
+	layout_context = new Layout_context({
 			props: {
-				class: "" + (nearby_x + " " + nearby_y),
-				$$slots: { default: [create_default_slot$b] },
+				context_class: "" + (in_front + " " + nearby_z + " " + nearby),
+				context_style: nearby_z_child,
+				$$slots: { default: [create_default_slot$c] },
 				$$scope: { ctx }
 			}
 		});
 
 	return {
 		c() {
-			create_component(nearby.$$.fragment);
+			create_component(layout_context.$$.fragment);
 		},
 		l(nodes) {
-			claim_component(nearby.$$.fragment, nodes);
+			claim_component(layout_context.$$.fragment, nodes);
 		},
 		m(target, anchor) {
-			mount_component(nearby, target, anchor);
+			mount_component(layout_context, target, anchor);
 			current = true;
 		},
 		p(ctx, [dirty]) {
-			const nearby_changes = {};
+			const layout_context_changes = {};
 
 			if (dirty & /*$$scope*/ 2) {
-				nearby_changes.$$scope = { dirty, ctx };
+				layout_context_changes.$$scope = { dirty, ctx };
 			}
 
-			nearby.$set(nearby_changes);
+			layout_context.$set(layout_context_changes);
 		},
 		i(local) {
 			if (current) return;
-			transition_in(nearby.$$.fragment, local);
+			transition_in(layout_context.$$.fragment, local);
 			current = true;
 		},
 		o(local) {
-			transition_out(nearby.$$.fragment, local);
+			transition_out(layout_context.$$.fragment, local);
 			current = false;
 		},
 		d(detaching) {
-			destroy_component(nearby, detaching);
+			destroy_component(layout_context, detaching);
 		}
 	};
 }
