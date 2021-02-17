@@ -43,7 +43,7 @@ export const element_style = (
 		padding == null
 			? ''
 			: `padding: ${Array.isArray(padding) ? padding.map(n => `${n}px`).join(' ') : `${padding}px` };`,
-		x || y ? `transform: translate3d(${ x }px, ${ y }px, 0);` : '',
+		x || y ? `transform: translate3d(${ x || 0 }px, ${ y || 0 }px, 0);` : '',
 		overflow_style('x', clip_x, scroll_x),
 		overflow_style('y', clip_y, scroll_y)
 	].join('')
