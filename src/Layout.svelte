@@ -13,22 +13,19 @@
 	export let layout_style
 	export let layout_spacing
 	export let layout_context
-	export let spacing = 0
 	export let spacing_x = 0
 	export let spacing_y = 0
 
-	$: computed_spacing_x = spacing_x || spacing
-	$: computed_spacing_y = spacing_y || spacing
 	$: style = [
 		'flex-grow: 1;',
 		layout_any_style($$props),
 		layout_style($$props),
-		layout_spacing(computed_spacing_x, computed_spacing_y),
-		spacing_context(computed_spacing_x, computed_spacing_y)
+		layout_spacing(spacing_x, spacing_y),
+		spacing_context(spacing_x, spacing_y)
 	].join('')
 	$: context_values = {
-		spacing_x: typeof computed_spacing_x === 'number' ? computed_spacing_x : 0,
-		spacing_y: typeof computed_spacing_y === 'number' ? computed_spacing_y : 0
+		spacing_x: typeof spacing_x === 'number' ? spacing_x : 0,
+		spacing_y: typeof spacing_y === 'number' ? spacing_y : 0
 	}
 </script>
 
