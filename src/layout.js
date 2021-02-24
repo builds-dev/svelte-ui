@@ -34,8 +34,8 @@ export const layout_x_child = ({ spacing_x = 0, spacing_y = 0 } = {}) => ({ heig
 	[
 		height.base.type === 'fill' ? `height: calc(100% - ${spacing_y}px);` : '',
 		height.base.type === 'content' ? `height: auto;` : '',
-		width.base.type === 'fill' ? `flex-basis: 0; flex-grow: ${width.base.value};` : '',
-		width.base.type === 'content' ? `flex-basis: auto; flex-grow: 0;` : ''
+		width.base.type === 'fill' ? `flex-grow: ${width.base.value};` : '',
+		width.base.type === 'content' ? `flex-grow: 0;` : ''
 	].join('')
 
 // static styles for y layout
@@ -45,8 +45,8 @@ export const layout_y = css`
 
 export const layout_y_child = ({ spacing_x = 0, spacing_y = 0 } = {}) => ({ height, width }) =>
 	[
-		height.base.type === 'fill' ? `flex-basis: 0; flex-grow: ${height.base.value};` : '',
-		height.base.type === 'content' ? `flex-basis: auto; flex-grow: 0;` : '',
+		height.base.type === 'fill' ? `flex-grow: ${height.base.value};` : '',
+		height.base.type === 'content' ? `flex-grow: 0;` : '',
 		width.base.type === 'fill' ? `width: calc(100% - ${spacing_x}px);` : '',
 		width.base.type === 'content' ? `width: auto;` : ''
 	].join('')
