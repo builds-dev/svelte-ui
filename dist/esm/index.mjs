@@ -513,7 +513,7 @@ const layout_x_child = ({
 } = {}) => ({
   height,
   width
-}) => [height.base.type === 'fill' ? `height: calc(100% - ${spacing_y}px);` : '', height.base.type === 'content' ? `height: auto;` : '', width.base.type === 'fill' ? `flex-basis: 0; flex-grow: ${width.base.value};` : '', width.base.type === 'content' ? `flex-basis: auto; flex-grow: 0;` : ''].join(''); // static styles for y layout
+}) => [height.base.type === 'fill' ? `height: calc(100% - ${spacing_y}px);` : '', height.base.type === 'content' ? `height: auto;` : '', width.base.type === 'fill' ? `flex-grow: ${width.base.value};` : '', width.base.type === 'content' ? `flex-grow: 0;` : ''].join(''); // static styles for y layout
 
 const layout_y = "layout_y_l8o4g34";
 const layout_y_child = ({
@@ -522,7 +522,7 @@ const layout_y_child = ({
 } = {}) => ({
   height,
   width
-}) => [height.base.type === 'fill' ? `flex-basis: 0; flex-grow: ${height.base.value};` : '', height.base.type === 'content' ? `flex-basis: auto; flex-grow: 0;` : '', width.base.type === 'fill' ? `width: calc(100% - ${spacing_x}px);` : '', width.base.type === 'content' ? `width: auto;` : ''].join(''); // dynamic styles for x layout
+}) => [height.base.type === 'fill' ? `flex-grow: ${height.base.value};` : '', height.base.type === 'content' ? `flex-grow: 0;` : '', width.base.type === 'fill' ? `width: calc(100% - ${spacing_x}px);` : '', width.base.type === 'content' ? `width: auto;` : ''].join(''); // dynamic styles for x layout
 
 const layout_x_style = ({
   align_bottom,
@@ -1744,7 +1744,7 @@ class Column extends SvelteComponent {
 	}
 }
 
-var css_248z$4 = ".image_i1b6qkac > img{display:block;object-fit:cover;}\n";
+var css_248z$4 = ".image_i1b6qkac{-webkit-flex-shrink:1;-ms-flex-negative:1;flex-shrink:1;}.image_i1b6qkac > img{display:block;object-fit:cover;}\n";
 styleInject(css_248z$4);
 
 const image = "image_i1b6qkac";
