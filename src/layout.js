@@ -3,6 +3,12 @@ import { element } from './element'
 import { space_evenly, space_between, space_around } from './spacing.js'
 
 /*
+ * This needs to be a big enough number that any `grow(n)` element will get less than half a pixel of extra width, which would round down to 0px extra width.
+ * This makes it so that if any sibling has `fill`, then there is no excess width to distribute to siblings with `grow`, even though they are both implemented with flex-grow.
+ */
+const fill_flex_grow_modifier = 100000
+
+/*
  * styles necessary for a dom node containing one or more children (layout container)
  *
  * a layout container must choose an axis as its basis for its layout, even if it can only contain one child
@@ -32,10 +38,11 @@ export const spacing_child = ({ spacing_x, spacing_y }) =>
 
 export const layout_x_child = ({ spacing_x = 0, spacing_y = 0 } = {}) => ({ height, width }) =>
 	[
-		height.base.type === 'fill' ? `height: calc(100% - ${spacing_y}px);` : '',
-		height.base.type === 'content' ? `height: auto;` : '',
-		width.base.type === 'fill' ? `flex-grow: ${width.base.value}; flex-shrink: 1;` : '',
-		width.base.type === 'content' ? `flex-grow: 0;` : ''
+		// height.type === 'fill' ? `height: ${spacing_y ? `calc(100% - ${spacing_y}px)` : '100%'};` : '',
+		height.type === 'fill' ? 'align-self: stretch;' : '',
+		height.type === 'grow' && height.value > 0 ? `align-self: stretch;` : '',
+		width.type === 'fill' ? `flex-grow: ${width.value * fill_flex_grow_modifier}; flex-basis: 0%; ${width.min ? '' : 'min-width: 0;'}` : '',
+		width.type === 'grow' ? `flex-grow: ${width.value};` : ''
 	].join('')
 
 // static styles for y layout
@@ -43,12 +50,17 @@ export const layout_y = css`
 	flex-direction: column;
 `
 
+/*
+ * NOTE: an element with `{dimension}=fill` must specify a min-{dimension} (i.e. min-width: 0) or min-{dimension} will default to min-content,
+ * potentially causing content to expand the parent beyond its regular fill size.
+ */
 export const layout_y_child = ({ spacing_x = 0, spacing_y = 0 } = {}) => ({ height, width }) =>
 	[
-		height.base.type === 'fill' ? `flex-grow: ${height.base.value}; flex-shrink: 1;` : '',
-		height.base.type === 'content' ? `flex-grow: 0;` : '',
-		width.base.type === 'fill' ? `width: calc(100% - ${spacing_x}px);` : '',
-		width.base.type === 'content' ? `width: auto;` : ''
+		height.type === 'fill' ? `flex-grow: ${height.value * fill_flex_grow_modifier}; flex-basis: 0%; ${height.min ? '' : 'min-height: 0;'}` : '',
+		height.type === 'grow' ? `flex-grow: ${height.value};` : '',
+		// width.type === 'fill' ? `width: ${spacing_x ? `calc(100% - ${spacing_x}px)` : '100%'};` : '',
+		width.type === 'fill' ? 'align-self: stretch;' : '',
+		width.type === 'grow' && width.value > 0 ? 'align-self: stretch;' : ''
 	].join('')
 
 // dynamic styles for x layout

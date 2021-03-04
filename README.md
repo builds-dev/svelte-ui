@@ -1,6 +1,6 @@
 # svelte-ui
 
-An elm-ui like thing for expressing UI in a reasonable way.
+Svelte components for expressing UI in a reasonable and consistent way. Inspired by [elm-ui](https://github.com/mdgriffith/elm-ui).
 
 ## getting started
 
@@ -15,6 +15,7 @@ npm install holographio/svelte-ui#v0.0.3-dist
 ```html
 <script>
 import { Viewport, Box, Column, Row } from '@holographio/svelte-ui'
+</script>
 
 <Viewport>
 	<Column width={fill}>
@@ -26,6 +27,8 @@ import { Viewport, Box, Column, Row } from '@holographio/svelte-ui'
 ```
 
 ## major differences from elm-ui
+
+TODO: remove this section, because te library is increasingly way different from elm-ui, svelte aside.
 
 ### alignment in sibling contexts
 

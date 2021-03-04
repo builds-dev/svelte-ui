@@ -3,11 +3,13 @@
 	import {
 		layout,
 		layout_style as layout_any_style,
+		layout_x_style,
 		spacing_child,
 		spacing_context
 	} from './layout'
 	import Layout_context from './Layout_context.svelte'
 
+	export let style = ''
 	export let ref
 	export let layout_class
 	export let layout_style
@@ -16,8 +18,12 @@
 	export let spacing_x = 0
 	export let spacing_y = 0
 
-	$: style = [
-		'flex-grow: 1;',
+	$: outer_style = [
+		layout_x_style($$props),
+		style
+	].join('')
+	$: inner_style = [
+		'flex-grow: 1; align-self: stretch;',
 		layout_any_style($$props),
 		layout_style($$props),
 		layout_spacing(spacing_x, spacing_y),
@@ -27,18 +33,20 @@
 		spacing_x: typeof spacing_x === 'number' ? spacing_x : 0,
 		spacing_y: typeof spacing_y === 'number' ? spacing_y : 0
 	}
+	$: context_style = props => `${spacing_child(context_values)}${layout_context (context_values) (props)}`
 </script>
 
 <Element
 	bind:ref
+	style={ outer_style }
 	{ ...$$restProps }
 >
 	<div
 		class="{ layout_class } { layout }"
-		{ style }
+		style={ inner_style }
 	>
 		<Layout_context
-			context_style={props => `${spacing_child(context_values)}${layout_context (context_values) (props)}`}
+			{ context_style }
 		>
 			<slot/>
 		</Layout_context>

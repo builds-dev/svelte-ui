@@ -4,7 +4,7 @@
 	import { layout_y_child } from './layout'
 
 	const CONTEXT_KEY = Symbol()
-	export const get_layout_context = () => getContext(CONTEXT_KEY) || { style: writable(layout_y_child()), classes: '' }
+	export const get_layout_context = () => getContext(CONTEXT_KEY) || { style: writable(layout_y_child()), class: '' }
 	export const set_layout_context = value => setContext(CONTEXT_KEY, value)
 </script>
 

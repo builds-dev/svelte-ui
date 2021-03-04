@@ -56,9 +56,9 @@ export const nearby_child = css`
 `
 
 export const nearby_x_child = ({ height }) =>
-	height.base.type === 'fill' ? 'height: 100%;' : ''
+	height.type === 'fill' ? 'height: 100%;' : ''
 
 export const nearby_y_child = ({ width }) =>
-	width.base.type === 'fill' ? 'width: 100%;' : ''
+	width.type === 'fill' ? 'width: 100%;' : ''
 
 export const nearby_z_child = props => `${nearby_x_child(props)}${nearby_y_child(props)}`
