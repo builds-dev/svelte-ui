@@ -3,10 +3,11 @@ import { element } from './element'
 import { space_evenly, space_between, space_around } from './spacing.js'
 
 /*
- * This needs to be a big enough number that any `grow(n)` element will get less than half a pixel of extra width, which would round down to 0px extra width.
- * This makes it so that if any sibling has `fill`, then there is no excess width to distribute to siblings with `grow`, even though they are both implemented with flex-grow.
+ * NOTE: an element with `{dimension}=fill` must specify a min-{dimension} (i.e. min-width: 0) or min-{dimension} will default to min-content,
+ * potentially causing content to expand the parent beyond its fill size.
  */
-const fill_flex_grow_modifier = 100000
+const fill_main_axis = length => `flex-grow: ${length.value}; flex-basis: 0%; ${length.min ? '' : 'min-width: 0;'}`
+const fill_cross_axis = spacing => spacing ? `calc(100% - ${spacing}px)` : '100%'
 
 /*
  * styles necessary for a dom node containing one or more children (layout container)
@@ -23,7 +24,7 @@ export const layout = css`
 `
 
 // dynamic styles
-export const layout_style = ({ wrap }) => wrap ? 'flex-wrap: wrap;' : ''
+export const layout_style = ({ wrap }) => wrap ? 'flex-wrap: wrap; align-content: flex-start;' : ''
 
 // static styles for x layout
 export const layout_x = css`
@@ -38,10 +39,9 @@ export const spacing_child = ({ spacing_x, spacing_y }) =>
 
 export const layout_x_child = ({ spacing_x = 0, spacing_y = 0 } = {}) => ({ height, width }) =>
 	[
-		// height.type === 'fill' ? `height: ${spacing_y ? `calc(100% - ${spacing_y}px)` : '100%'};` : '',
-		height.type === 'fill' ? 'align-self: stretch;' : '',
-		height.type === 'grow' && height.value > 0 ? `align-self: stretch;` : '',
-		width.type === 'fill' ? `flex-grow: ${width.value * fill_flex_grow_modifier}; flex-basis: 0%; ${width.min ? '' : 'min-width: 0;'}` : '',
+		height.type === 'fill' ? `height: ${fill_cross_axis(spacing_y)};` : '',
+		height.type === 'grow' && height.value > 0 ? `height: ${fill_cross_axis(spacing_y)};` : '',
+		width.type === 'fill' ? fill_main_axis(width) : '',
 		width.type === 'grow' ? `flex-grow: ${width.value};` : ''
 	].join('')
 
@@ -50,17 +50,12 @@ export const layout_y = css`
 	flex-direction: column;
 `
 
-/*
- * NOTE: an element with `{dimension}=fill` must specify a min-{dimension} (i.e. min-width: 0) or min-{dimension} will default to min-content,
- * potentially causing content to expand the parent beyond its regular fill size.
- */
 export const layout_y_child = ({ spacing_x = 0, spacing_y = 0 } = {}) => ({ height, width }) =>
 	[
-		height.type === 'fill' ? `flex-grow: ${height.value * fill_flex_grow_modifier}; flex-basis: 0%; ${height.min ? '' : 'min-height: 0;'}` : '',
+		height.type === 'fill' ? fill_main_axis(height) : '',
 		height.type === 'grow' ? `flex-grow: ${height.value};` : '',
-		// width.type === 'fill' ? `width: ${spacing_x ? `calc(100% - ${spacing_x}px)` : '100%'};` : '',
-		width.type === 'fill' ? 'align-self: stretch;' : '',
-		width.type === 'grow' && width.value > 0 ? 'align-self: stretch;' : ''
+		width.type === 'fill' ? `width: ${fill_cross_axis(spacing_x)};` : '',
+		width.type === 'grow' && width.value > 0 ? `width: ${fill_cross_axis(spacing_x)};` : ''
 	].join('')
 
 // dynamic styles for x layout
