@@ -9,6 +9,9 @@
 	} from './layout'
 	import Layout_context from './Layout_context.svelte'
 
+	// TODO: having both spacing_x and spacing_y for Row and Column can be dropped once a good 'wrapping' system is implemented.
+
+	export let container_style = '' // TODO: this is temporary, especially in case `align-content` is needed
 	export let style = ''
 	export let ref
 	export let layout_class
@@ -27,7 +30,8 @@
 		layout_any_style($$props),
 		layout_style($$props),
 		layout_spacing(spacing_x, spacing_y),
-		spacing_context(spacing_x, spacing_y)
+		spacing_context(spacing_x, spacing_y),
+		container_style
 	].join('')
 	$: context_values = {
 		spacing_x: typeof spacing_x === 'number' ? spacing_x : 0,
