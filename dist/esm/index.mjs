@@ -96,6 +96,10 @@ function element(name) {
 function svg_element(name) {
     return document.createElementNS('http://www.w3.org/2000/svg', name);
 }
+function listen(node, event, handler, options) {
+    node.addEventListener(event, handler, options);
+    return () => node.removeEventListener(event, handler, options);
+}
 function attr(node, attribute, value) {
     if (value == null)
         node.removeAttribute(attribute);
@@ -134,6 +138,9 @@ function get_current_component() {
     if (!current_component)
         throw new Error('Function called outside component initialization');
     return current_component;
+}
+function onMount(fn) {
+    get_current_component().$$.on_mount.push(fn);
 }
 function setContext(key, context) {
     get_current_component().$$.context.set(key, context);
@@ -405,29 +412,39 @@ class SvelteComponent {
     }
 }
 
+const length = type => value => ({ type, value });
+
 const length_defaults = { min: 0, max: Infinity };
 
-const fill = (portion = 1) => ({ base: { type: 'fill', value: portion }, ...length_defaults });
+const px = length('px');
+
+const ratio = length('ratio');
+
+const fill = length('fill');
 Object.assign(fill, fill(1));
 
-const content = { base: { type: 'content' }, ...length_defaults };
+const grow = length('grow');
+Object.assign(grow, grow(1));
 
-const px = value => ({ base: { type: 'px', value }, ...length_defaults });
+const content = grow(0);
 
-const min = value => length => ({ ...format_length(length), min: value });
+const format_length_property = length => typeof length === 'number' ? px(length) : length;
 
-const max = value => length => ({ ...format_length(length), max: value });
+const format_length_object = ({ type, value, min = 0, max = Infinity }) => ({
+	type,
+	value,
+	min: format_length_property(min),
+	max: format_length_property(max)
+});
 
-const format_length = length => typeof length === 'number' ? px(length) : length;
+const format_length = length =>
+	format_length_object(format_length_property(length));
 
-const length_css = (property, length) => {
-	const { base, min, max } = format_length(length);
-	return [
-		base.type === 'px' ? `${property}: ${base.value}px;` : '',
-		min ? `min-${property}: ${ min }px;` : '',
-		max == null || max === Infinity ? '' : `max-${property}: ${ max }px;`
-	].join(' ')
-};
+const modifier = prop => value => length => ({ ...format_length_property(length), [prop]: value });
+
+const min = modifier('min');
+
+const max = modifier('max');
 
 function styleInject(css, ref) {
   if ( ref === void 0 ) ref = {};
@@ -456,13 +473,22 @@ function styleInject(css, ref) {
   }
 }
 
-var css_248z = ".element_ekolm46{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-basis:auto;-ms-flex-preferred-size:auto;flex-basis:auto;-webkit-flex-shrink:0;-ms-flex-negative:0;flex-shrink:0;position:relative;box-sizing:border-box;height:auto;width:auto;overflow:visible;}\n";
+var css_248z = ".element_ekolm46{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-direction:row;-ms-flex-direction:row;flex-direction:row;-webkit-flex:0 0 auto;-ms-flex:0 0 auto;flex:0 0 auto;position:relative;box-sizing:border-box;overflow:visible;}\n";
 styleInject(css_248z);
 
+const target_value = ({
+  type,
+  value
+}) => type === 'ratio' ? `${value * 100}%` : `${value}px`;
+
+const length_css = (property, length) => {
+  return [length.type === 'px' ? `${property}: ${length.value}px;` : '', length.min.value > 0 ? `min-${property}: ${target_value(length.min)};` : '', length.max.value === Infinity ? '' : `max-${property}: ${target_value(length.max)};`].join(' ');
+};
 /*
  * styles necessary for a dom node child of a layout container
  */
 // static styles
+
 
 const element$1 = "element_ekolm46";
 
@@ -490,30 +516,38 @@ var css_248z$1 = ".layout_lb7yjy4{display:-webkit-box;display:-webkit-flex;displ
 styleInject(css_248z$1);
 
 /*
+ * NOTE: an element with `{dimension}=fill` must specify a min-{dimension} (i.e. min-width: 0) or min-{dimension} will default to min-content,
+ * potentially causing content to expand the parent beyond its fill size.
+ */
+
+const fill_main_axis = length => `flex-grow: ${length.value}; flex-basis: 0%; ${length.min ? '' : 'min-width: 0;'}`;
+
+const fill_cross_axis = spacing => spacing ? `calc(100% - ${spacing}px)` : '100%';
+
+const child_ratio_length = (property, parent, child) => child[property].type === 'ratio' ? `${property}: ${parent[property].type === 'grow' ? '0px' : `${child[property].value * 100}%`};` : '';
+/*
  * styles necessary for a dom node containing one or more children (layout container)
  *
- * a layout container must choose an axis as its basis for its layout, even if it can only contain one child
+ * a layout container must choose an axis as its basis for layout, even if it can only contain one child
  */
 // static styles
+
 
 const layout = "layout_lb7yjy4"; // dynamic styles
 
 const layout_style = ({
   wrap
-}) => wrap ? 'flex-wrap: wrap;' : ''; // static styles for x layout
+}) => wrap ? 'flex-wrap: wrap; align-content: flex-start;' : ''; // static styles for x layout
 
 const layout_x = "layout_x_l1m6442m";
-const spacing_child = ({
-  spacing_x,
-  spacing_y
-}) => [spacing_y ? `margin-top: ${spacing_y}px;` : '', spacing_x ? `margin-left: ${spacing_x}px;` : ''].join('');
+const layout_child = (parent, child) => [child_ratio_length('height', parent, child), child_ratio_length('width', parent, child), parent.spacing_y ? `margin-top: ${parent.spacing_y}px;` : '', parent.spacing_x ? `margin-left: ${parent.spacing_x}px;` : ''].join('');
 const layout_x_child = ({
   spacing_x = 0,
   spacing_y = 0
 } = {}) => ({
   height,
   width
-}) => [height.base.type === 'fill' ? `height: calc(100% - ${spacing_y}px);` : '', height.base.type === 'content' ? `height: auto;` : '', width.base.type === 'fill' ? `flex-grow: ${width.base.value}; flex-shrink: 1;` : '', width.base.type === 'content' ? `flex-grow: 0;` : ''].join(''); // static styles for y layout
+}) => [height.type === 'fill' ? `height: ${fill_cross_axis(spacing_y)};` : '', height.type === 'grow' && height.value > 0 ? `height: ${fill_cross_axis(spacing_y)};` : '', width.type === 'fill' ? fill_main_axis(width) : '', width.type === 'grow' ? `flex-grow: ${width.value};` : ''].join(''); // static styles for y layout
 
 const layout_y = "layout_y_l8o4g34";
 const layout_y_child = ({
@@ -522,7 +556,7 @@ const layout_y_child = ({
 } = {}) => ({
   height,
   width
-}) => [height.base.type === 'fill' ? `flex-grow: ${height.base.value}; flex-shrink: 1;` : '', height.base.type === 'content' ? `flex-grow: 0;` : '', width.base.type === 'fill' ? `width: calc(100% - ${spacing_x}px);` : '', width.base.type === 'content' ? `width: auto;` : ''].join(''); // dynamic styles for x layout
+}) => [height.type === 'fill' ? fill_main_axis(height) : '', height.type === 'grow' ? `flex-grow: ${height.value};` : '', width.type === 'fill' ? `width: ${fill_cross_axis(spacing_x)};` : '', width.type === 'grow' && width.value > 0 ? `width: ${fill_cross_axis(spacing_x)};` : ''].join(''); // dynamic styles for x layout
 
 const layout_x_style = ({
   align_bottom,
@@ -643,7 +677,7 @@ const CONTEXT_KEY = Symbol();
 
 const get_layout_context = () => getContext(CONTEXT_KEY) || {
 	style: writable(layout_y_child()),
-	classes: ""
+	class: ""
 };
 
 const set_layout_context = value => setContext(CONTEXT_KEY, value);
@@ -677,12 +711,14 @@ class Layout_context extends SvelteComponent {
 	}
 }
 
+const concat = names => names.reduce((acc, value) => value ? `${acc} ${value}` : acc, '');
+
 /* src/Element.svelte generated by Svelte v3.32.0 */
 
 function create_default_slot(ctx) {
 	let current;
-	const default_slot_template = /*#slots*/ ctx[8].default;
-	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[10], null);
+	const default_slot_template = /*#slots*/ ctx[9].default;
+	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[11], null);
 
 	return {
 		c() {
@@ -700,8 +736,8 @@ function create_default_slot(ctx) {
 		},
 		p(ctx, dirty) {
 			if (default_slot) {
-				if (default_slot.p && dirty & /*$$scope*/ 1024) {
-					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[10], dirty, null, null);
+				if (default_slot.p && dirty & /*$$scope*/ 2048) {
+					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[11], dirty, null, null);
 				}
 			}
 		},
@@ -747,25 +783,29 @@ function create_fragment$1(ctx) {
 			this.h();
 		},
 		h() {
-			attr(div, "class", /*className*/ ctx[5]);
-			attr(div, "style", div_style_value = "" + (element_style(/*props*/ ctx[2]) + /*$context_style*/ ctx[3](/*props*/ ctx[2]) + /*style*/ ctx[1]));
+			attr(div, "class", /*class_name*/ ctx[3]);
+			attr(div, "style", div_style_value = "" + (element_style(/*props*/ ctx[2]) + /*$context_style*/ ctx[4](/*props*/ ctx[2]) + /*style*/ ctx[1]));
 		},
 		m(target, anchor) {
 			insert(target, div, anchor);
 			mount_component(layout_context, div, null);
-			/*div_binding*/ ctx[9](div);
+			/*div_binding*/ ctx[10](div);
 			current = true;
 		},
 		p(ctx, [dirty]) {
 			const layout_context_changes = {};
 
-			if (dirty & /*$$scope*/ 1024) {
+			if (dirty & /*$$scope*/ 2048) {
 				layout_context_changes.$$scope = { dirty, ctx };
 			}
 
 			layout_context.$set(layout_context_changes);
 
-			if (!current || dirty & /*props, $context_style, style*/ 14 && div_style_value !== (div_style_value = "" + (element_style(/*props*/ ctx[2]) + /*$context_style*/ ctx[3](/*props*/ ctx[2]) + /*style*/ ctx[1]))) {
+			if (!current || dirty & /*class_name*/ 8) {
+				attr(div, "class", /*class_name*/ ctx[3]);
+			}
+
+			if (!current || dirty & /*props, $context_style, style*/ 22 && div_style_value !== (div_style_value = "" + (element_style(/*props*/ ctx[2]) + /*$context_style*/ ctx[4](/*props*/ ctx[2]) + /*style*/ ctx[1]))) {
 				attr(div, "style", div_style_value);
 			}
 		},
@@ -781,7 +821,7 @@ function create_fragment$1(ctx) {
 		d(detaching) {
 			if (detaching) detach(div);
 			destroy_component(layout_context);
-			/*div_binding*/ ctx[9](null);
+			/*div_binding*/ ctx[10](null);
 		}
 	};
 }
@@ -790,13 +830,25 @@ function instance$1($$self, $$props, $$invalidate) {
 	let height;
 	let width;
 	let props;
+	let class_name;
 	let $context_style;
 	let { $$slots: slots = {}, $$scope } = $$props;
 	let { ref = undefined } = $$props;
+	let { on = null } = $$props;
 	let { style = "" } = $$props;
+
+	onMount(() => {
+		if (on) {
+			const dispose = Object.keys(on).map(name => typeof on[name] === "function"
+			? listen(ref, name, on[name])
+			: listen(ref, name, on[name].listener, on[name].options));
+
+			return () => run_all(dispose);
+		}
+	});
+
 	const { style: context_style, class: context_class } = get_layout_context();
-	component_subscribe($$self, context_style, value => $$invalidate(3, $context_style = value));
-	const className = [$$props.class || "", context_class, element$1].join(" ");
+	component_subscribe($$self, context_style, value => $$invalidate(4, $context_style = value));
 
 	function div_binding($$value) {
 		binding_callbacks[$$value ? "unshift" : "push"](() => {
@@ -806,16 +858,18 @@ function instance$1($$self, $$props, $$invalidate) {
 	}
 
 	$$self.$$set = $$new_props => {
-		$$invalidate(12, $$props = assign(assign({}, $$props), exclude_internal_props($$new_props)));
+		$$invalidate(13, $$props = assign(assign({}, $$props), exclude_internal_props($$new_props)));
 		if ("ref" in $$new_props) $$invalidate(0, ref = $$new_props.ref);
+		if ("on" in $$new_props) $$invalidate(6, on = $$new_props.on);
 		if ("style" in $$new_props) $$invalidate(1, style = $$new_props.style);
-		if ("$$scope" in $$new_props) $$invalidate(10, $$scope = $$new_props.$$scope);
+		if ("$$scope" in $$new_props) $$invalidate(11, $$scope = $$new_props.$$scope);
 	};
 
 	$$self.$$.update = () => {
-		 $$invalidate(6, height = format_length($$props.height || content));
-		 $$invalidate(7, width = format_length($$props.width || content));
+		 $$invalidate(7, height = format_length($$props.height || content));
+		 $$invalidate(8, width = format_length($$props.width || content));
 		 $$invalidate(2, props = { ...$$props, height, width });
+		 $$invalidate(3, class_name = concat([$$props.class, context_class, element$1]));
 	};
 
 	$$props = exclude_internal_props($$props);
@@ -824,9 +878,10 @@ function instance$1($$self, $$props, $$invalidate) {
 		ref,
 		style,
 		props,
+		class_name,
 		$context_style,
 		context_style,
-		className,
+		on,
 		height,
 		width,
 		slots,
@@ -838,7 +893,7 @@ function instance$1($$self, $$props, $$invalidate) {
 class Element extends SvelteComponent {
 	constructor(options) {
 		super();
-		init(this, options, instance$1, create_fragment$1, safe_not_equal, { ref: 0, style: 1 });
+		init(this, options, instance$1, create_fragment$1, safe_not_equal, { ref: 0, on: 6, style: 1 });
 	}
 }
 
@@ -858,10 +913,10 @@ const below = "below_b1lubls";
 const nearby_child = "nearby_child_n1iosxib";
 const nearby_x_child = ({
   height
-}) => height.base.type === 'fill' ? 'height: 100%;' : '';
+}) => height.type === 'fill' ? 'height: 100%;' : '';
 const nearby_y_child = ({
   width
-}) => width.base.type === 'fill' ? 'width: 100%;' : '';
+}) => width.type === 'fill' ? 'width: 100%;' : '';
 const nearby_z_child = props => `${nearby_x_child(props)}${nearby_y_child(props)}`;
 
 var css_248z$3 = ".box_b15mj1xn > :not(.nearby_n1ymrolb) ~ :not(.nearby_n1ymrolb){visibility:hidden;}.box_b15mj1xn > :not(.nearby_n1ymrolb) ~ :not(.nearby_n1ymrolb):before{content:\"Error: Box may only contain one child.\";visibility:visible;background:red;color:white;display:block;font-weight:bold;padding:30px;}.box_b15mj1xn > :not(.nearby_n1ymrolb) ~ :not(.nearby_n1ymrolb) ~ :not(.nearby_n1ymrolb):before{display:none;}\n";
@@ -922,7 +977,7 @@ function create_default_slot_1(ctx) {
     }
 
   };
-} // (31:0) <Element  bind:ref  { ...$$restProps }  class={ [ $$props.class || '', box, layout_x, layout ].join(' ') }  style="{ layout_style($$props) }{ layout_x_style($$props) }{ style }" >
+} // (32:0) <Element  bind:ref  { ...$$restProps }  class="{ classname_concat([ $$props.class, box, layout_x, layout ]) }"  style="{ layout_x_style($$props) }{ style }" >
 
 
 function create_default_slot$1(ctx) {
@@ -993,15 +1048,13 @@ function create_fragment$2(ctx) {
   const element_1_spread_levels = [
   /*$$restProps*/
   ctx[3], {
-    class: [
+    class: concat([
     /*$$props*/
-    ctx[4].class || "",
+    ctx[4].class,
     /*box*/
-    ctx[2], layout_x, layout].join(" ")
+    ctx[2], layout_x, layout])
   }, {
-    style: "" + (layout_style(
-    /*$$props*/
-    ctx[4]) + layout_x_style(
+    style: "" + (layout_x_style(
     /*$$props*/
     ctx[4]) +
     /*style*/
@@ -1054,25 +1107,23 @@ function create_fragment$2(ctx) {
 
     p(ctx, [dirty]) {
       const element_1_changes = dirty &
-      /*$$restProps, $$props, box, layout_x, layout, layout_style, layout_x_style, style*/
+      /*$$restProps, classname_concat, $$props, box, layout_x, layout, layout_x_style, style*/
       30 ? get_spread_update(element_1_spread_levels, [dirty &
       /*$$restProps*/
       8 && get_spread_object(
       /*$$restProps*/
       ctx[3]), dirty &
-      /*$$props, box, layout_x, layout*/
+      /*classname_concat, $$props, box, layout_x, layout*/
       20 && {
-        class: [
+        class: concat([
         /*$$props*/
-        ctx[4].class || "",
+        ctx[4].class,
         /*box*/
-        ctx[2], layout_x, layout].join(" ")
+        ctx[2], layout_x, layout])
       }, dirty &
-      /*layout_style, $$props, layout_x_style, style*/
+      /*layout_x_style, $$props, style*/
       18 && {
-        style: "" + (layout_style(
-        /*$$props*/
-        ctx[4]) + layout_x_style(
+        style: "" + (layout_x_style(
         /*$$props*/
         ctx[4]) +
         /*style*/
@@ -1299,8 +1350,8 @@ class Aspect_ratio extends SvelteComponent {
 
 function create_default_slot_1$1(ctx) {
 	let current;
-	const default_slot_template = /*#slots*/ ctx[10].default;
-	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[13], null);
+	const default_slot_template = /*#slots*/ ctx[16].default;
+	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[18], null);
 
 	return {
 		c() {
@@ -1318,8 +1369,8 @@ function create_default_slot_1$1(ctx) {
 		},
 		p(ctx, dirty) {
 			if (default_slot) {
-				if (default_slot.p && dirty & /*$$scope*/ 8192) {
-					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[13], dirty, null, null);
+				if (default_slot.p && dirty & /*$$scope*/ 262144) {
+					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[18], dirty, null, null);
 				}
 			}
 		},
@@ -1338,7 +1389,7 @@ function create_default_slot_1$1(ctx) {
 	};
 }
 
-// (32:0) <Element  bind:ref  { ...$$restProps } >
+// (50:0) <Element  bind:ref  style={ outer_style }  { ...element_props } >
 function create_default_slot$2(ctx) {
 	let div;
 	let layout_context_1;
@@ -1347,7 +1398,7 @@ function create_default_slot$2(ctx) {
 
 	layout_context_1 = new Layout_context({
 			props: {
-				context_style: /*func*/ ctx[11],
+				context_style: /*context_style*/ ctx[5],
 				$$slots: { default: [create_default_slot_1$1] },
 				$$scope: { ctx }
 			}
@@ -1368,7 +1419,7 @@ function create_default_slot$2(ctx) {
 		},
 		h() {
 			attr(div, "class", div_class_value = "" + (/*layout_class*/ ctx[1] + " " + layout));
-			attr(div, "style", /*style*/ ctx[3]);
+			attr(div, "style", /*inner_style*/ ctx[3]);
 		},
 		m(target, anchor) {
 			insert(target, div, anchor);
@@ -1377,9 +1428,9 @@ function create_default_slot$2(ctx) {
 		},
 		p(ctx, dirty) {
 			const layout_context_1_changes = {};
-			if (dirty & /*context_values, layout_context*/ 20) layout_context_1_changes.context_style = /*func*/ ctx[11];
+			if (dirty & /*context_style*/ 32) layout_context_1_changes.context_style = /*context_style*/ ctx[5];
 
-			if (dirty & /*$$scope*/ 8192) {
+			if (dirty & /*$$scope*/ 262144) {
 				layout_context_1_changes.$$scope = { dirty, ctx };
 			}
 
@@ -1389,8 +1440,8 @@ function create_default_slot$2(ctx) {
 				attr(div, "class", div_class_value);
 			}
 
-			if (!current || dirty & /*style*/ 8) {
-				attr(div, "style", /*style*/ ctx[3]);
+			if (!current || dirty & /*inner_style*/ 8) {
+				attr(div, "style", /*inner_style*/ ctx[3]);
 			}
 		},
 		i(local) {
@@ -1413,10 +1464,10 @@ function create_fragment$4(ctx) {
 	let element_1;
 	let updating_ref;
 	let current;
-	const element_1_spread_levels = [/*$$restProps*/ ctx[5]];
+	const element_1_spread_levels = [{ style: /*outer_style*/ ctx[2] }, /*element_props*/ ctx[4]];
 
 	function element_1_ref_binding(value) {
-		/*element_1_ref_binding*/ ctx[12].call(null, value);
+		/*element_1_ref_binding*/ ctx[17].call(null, value);
 	}
 
 	let element_1_props = {
@@ -1447,11 +1498,14 @@ function create_fragment$4(ctx) {
 			current = true;
 		},
 		p(ctx, [dirty]) {
-			const element_1_changes = (dirty & /*$$restProps*/ 32)
-			? get_spread_update(element_1_spread_levels, [get_spread_object(/*$$restProps*/ ctx[5])])
+			const element_1_changes = (dirty & /*outer_style, element_props*/ 20)
+			? get_spread_update(element_1_spread_levels, [
+					dirty & /*outer_style*/ 4 && { style: /*outer_style*/ ctx[2] },
+					dirty & /*element_props*/ 16 && get_spread_object(/*element_props*/ ctx[4])
+				])
 			: {};
 
-			if (dirty & /*$$scope, layout_class, style, context_values, layout_context*/ 8222) {
+			if (dirty & /*$$scope, layout_class, inner_style, context_style*/ 262186) {
 				element_1_changes.$$scope = { dirty, ctx };
 			}
 
@@ -1479,15 +1533,22 @@ function create_fragment$4(ctx) {
 }
 
 function instance$4($$self, $$props, $$invalidate) {
-	let style;
+	let outer_style;
+	let inner_style;
+	let height;
+	let width;
+	let element_props;
 	let context_values;
+	let context_style;
 
 	const omit_props_names = [
-		"ref","layout_class","layout_style","layout_spacing","layout_context","spacing_x","spacing_y"
+		"container_style","style","ref","layout_class","layout_style","layout_spacing","layout_context","spacing_x","spacing_y"
 	];
 
 	let $$restProps = compute_rest_props($$props, omit_props_names);
 	let { $$slots: slots = {}, $$scope } = $$props;
+	let { container_style = "" } = $$props; // TODO: this is temporary, especially in case `align-content` is needed
+	let { style = "" } = $$props;
 	let { ref } = $$props;
 	let { layout_class } = $$props;
 	let { layout_style: layout_style$1 } = $$props;
@@ -1495,7 +1556,6 @@ function instance$4($$self, $$props, $$invalidate) {
 	let { layout_context } = $$props;
 	let { spacing_x = 0 } = $$props;
 	let { spacing_y = 0 } = $$props;
-	const func = props => `${spacing_child(context_values)}${layout_context(context_values)(props)}`;
 
 	function element_1_ref_binding(value) {
 		ref = value;
@@ -1503,32 +1563,47 @@ function instance$4($$self, $$props, $$invalidate) {
 	}
 
 	$$self.$$set = $$new_props => {
-		$$invalidate(14, $$props = assign(assign({}, $$props), exclude_internal_props($$new_props)));
-		$$invalidate(5, $$restProps = compute_rest_props($$props, omit_props_names));
+		$$invalidate(19, $$props = assign(assign({}, $$props), exclude_internal_props($$new_props)));
+		$$invalidate(20, $$restProps = compute_rest_props($$props, omit_props_names));
+		if ("container_style" in $$new_props) $$invalidate(6, container_style = $$new_props.container_style);
+		if ("style" in $$new_props) $$invalidate(7, style = $$new_props.style);
 		if ("ref" in $$new_props) $$invalidate(0, ref = $$new_props.ref);
 		if ("layout_class" in $$new_props) $$invalidate(1, layout_class = $$new_props.layout_class);
-		if ("layout_style" in $$new_props) $$invalidate(6, layout_style$1 = $$new_props.layout_style);
-		if ("layout_spacing" in $$new_props) $$invalidate(7, layout_spacing = $$new_props.layout_spacing);
-		if ("layout_context" in $$new_props) $$invalidate(2, layout_context = $$new_props.layout_context);
-		if ("spacing_x" in $$new_props) $$invalidate(8, spacing_x = $$new_props.spacing_x);
-		if ("spacing_y" in $$new_props) $$invalidate(9, spacing_y = $$new_props.spacing_y);
-		if ("$$scope" in $$new_props) $$invalidate(13, $$scope = $$new_props.$$scope);
+		if ("layout_style" in $$new_props) $$invalidate(8, layout_style$1 = $$new_props.layout_style);
+		if ("layout_spacing" in $$new_props) $$invalidate(9, layout_spacing = $$new_props.layout_spacing);
+		if ("layout_context" in $$new_props) $$invalidate(10, layout_context = $$new_props.layout_context);
+		if ("spacing_x" in $$new_props) $$invalidate(11, spacing_x = $$new_props.spacing_x);
+		if ("spacing_y" in $$new_props) $$invalidate(12, spacing_y = $$new_props.spacing_y);
+		if ("$$scope" in $$new_props) $$invalidate(18, $$scope = $$new_props.$$scope);
 	};
 
 	$$self.$$.update = () => {
-		 $$invalidate(3, style = [
-			"flex-grow: 1;",
+		 $$invalidate(2, outer_style = [layout_x_style($$props), style].join(""));
+
+		 $$invalidate(3, inner_style = [
+			"flex-grow: 1; align-self: stretch;",
 			layout_style($$props),
 			layout_style$1($$props),
 			layout_spacing(spacing_x, spacing_y),
-			spacing_context(spacing_x, spacing_y)
+			spacing_context(spacing_x, spacing_y),
+			container_style
 		].join(""));
 
-		if ($$self.$$.dirty & /*spacing_x, spacing_y*/ 768) {
-			 $$invalidate(4, context_values = {
+		 $$invalidate(13, height = format_length($$props.height || content));
+		 $$invalidate(14, width = format_length($$props.width || content));
+		 $$invalidate(4, element_props = { ...$$restProps, height, width });
+
+		if ($$self.$$.dirty & /*height, width, spacing_x, spacing_y*/ 30720) {
+			 $$invalidate(15, context_values = {
+				height,
+				width,
 				spacing_x: typeof spacing_x === "number" ? spacing_x : 0,
 				spacing_y: typeof spacing_y === "number" ? spacing_y : 0
 			});
+		}
+
+		if ($$self.$$.dirty & /*context_values, layout_context*/ 33792) {
+			 $$invalidate(5, context_style = props => `${layout_child(context_values, props)}${layout_context(context_values)(props)}`);
 		}
 	};
 
@@ -1537,16 +1612,21 @@ function instance$4($$self, $$props, $$invalidate) {
 	return [
 		ref,
 		layout_class,
-		layout_context,
+		outer_style,
+		inner_style,
+		element_props,
+		context_style,
+		container_style,
 		style,
-		context_values,
-		$$restProps,
 		layout_style$1,
 		layout_spacing,
+		layout_context,
 		spacing_x,
 		spacing_y,
+		height,
+		width,
+		context_values,
 		slots,
-		func,
 		element_1_ref_binding,
 		$$scope
 	];
@@ -1557,13 +1637,15 @@ class Layout extends SvelteComponent {
 		super();
 
 		init(this, options, instance$4, create_fragment$4, safe_not_equal, {
+			container_style: 6,
+			style: 7,
 			ref: 0,
 			layout_class: 1,
-			layout_style: 6,
-			layout_spacing: 7,
-			layout_context: 2,
-			spacing_x: 8,
-			spacing_y: 9
+			layout_style: 8,
+			layout_spacing: 9,
+			layout_context: 10,
+			spacing_x: 11,
+			spacing_y: 12
 		});
 	}
 }
@@ -1619,7 +1701,7 @@ function create_fragment$5(ctx) {
 	const layout_spread_levels = [
 		/*$$restProps*/ ctx[1],
 		{
-			class: [/*$$props*/ ctx[2].class || "", "column"].join(" ")
+			class: concat([/*$$props*/ ctx[2].class, "column"])
 		},
 		{
 			spacing_x: /*$$props*/ ctx[2].wrap
@@ -1667,11 +1749,11 @@ function create_fragment$5(ctx) {
 			current = true;
 		},
 		p(ctx, [dirty]) {
-			const layout_changes = (dirty & /*$$restProps, $$props, layout_y, layout_y_style, spacing_y_context, layout_y_child*/ 6)
+			const layout_changes = (dirty & /*$$restProps, classname_concat, $$props, layout_y, layout_y_style, spacing_y_context, layout_y_child*/ 6)
 			? get_spread_update(layout_spread_levels, [
 					dirty & /*$$restProps*/ 2 && get_spread_object(/*$$restProps*/ ctx[1]),
-					dirty & /*$$props*/ 4 && {
-						class: [/*$$props*/ ctx[2].class || "", "column"].join(" ")
+					dirty & /*classname_concat, $$props*/ 4 && {
+						class: concat([/*$$props*/ ctx[2].class, "column"])
 					},
 					dirty & /*$$props*/ 4 && {
 						spacing_x: /*$$props*/ ctx[2].wrap
@@ -1924,23 +2006,17 @@ function instance$6($$self, $$props, $$invalidate) {
 		if ($$self.$$.dirty & /*origin_x, origin_y, height_prop, width_prop*/ 3840) {
 			 $$invalidate(3, style = [
 				`object-position: ${origin_x * 100}% ${origin_y * 100}%;`,
-				height_prop.base.type !== "content"
-				? `height: 100%;`
-				: "",
-				width_prop.base.type !== "content" ? `width: 100%;` : ""
+				height_prop.type !== "content" ? `height: 100%;` : "",
+				width_prop.type !== "content" ? `width: 100%;` : ""
 			].join(""));
 		}
 
 		if ($$self.$$.dirty & /*width_prop*/ 2048) {
-			 $$invalidate(4, width = width_prop.base.type === "px"
-			? width_prop.base.value
-			: null);
+			 $$invalidate(4, width = width_prop.type === "px" ? width_prop.value : null);
 		}
 
 		if ($$self.$$.dirty & /*height_prop*/ 1024) {
-			 $$invalidate(5, height = height_prop.base.type === "px"
-			? height_prop.base.value
-			: null);
+			 $$invalidate(5, height = height_prop.type === "px" ? height_prop.value : null);
 		}
 	};
 
@@ -2028,7 +2104,7 @@ function create_fragment$7(ctx) {
 	const layout_spread_levels = [
 		/*$$restProps*/ ctx[1],
 		{
-			class: [/*$$props*/ ctx[2].class || "", "row"].join(" ")
+			class: concat([/*$$props*/ ctx[2].class, "row"])
 		},
 		{
 			spacing_x: /*$$props*/ ctx[2].spacing_x || /*$$props*/ ctx[2].spacing
@@ -2076,11 +2152,11 @@ function create_fragment$7(ctx) {
 			current = true;
 		},
 		p(ctx, [dirty]) {
-			const layout_changes = (dirty & /*$$restProps, $$props, layout_x, layout_x_style, spacing_x_context, layout_x_child*/ 6)
+			const layout_changes = (dirty & /*$$restProps, classname_concat, $$props, layout_x, layout_x_style, spacing_x_context, layout_x_child*/ 6)
 			? get_spread_update(layout_spread_levels, [
 					dirty & /*$$restProps*/ 2 && get_spread_object(/*$$restProps*/ ctx[1]),
-					dirty & /*$$props*/ 4 && {
-						class: [/*$$props*/ ctx[2].class || "", "row"].join(" ")
+					dirty & /*classname_concat, $$props*/ 4 && {
+						class: concat([/*$$props*/ ctx[2].class, "row"])
 					},
 					dirty & /*$$props*/ 4 && {
 						spacing_x: /*$$props*/ ctx[2].spacing_x || /*$$props*/ ctx[2].spacing
@@ -2931,4 +3007,4 @@ class In_front extends SvelteComponent {
 	}
 }
 
-export { Above, Aspect_ratio, Below, Box, Column, Image, In_back, In_front, On_left, On_right, Row, content, fill, format_length, length_css, max, min, px, space_around, space_between, space_evenly };
+export { Above, Aspect_ratio, Below, Box, Column, Image, In_back, In_front, On_left, On_right, Row, content, fill, format_length, format_length_property, grow, length_defaults, max, min, px, ratio, space_around, space_between, space_evenly };
