@@ -3,9 +3,21 @@ import { element } from './element'
 import { space_evenly, space_between, space_around } from './spacing.js'
 
 /*
+ * NOTE: an element with `{dimension}=fill` must specify a min-{dimension} (i.e. min-width: 0) or min-{dimension} will default to min-content,
+ * potentially causing content to expand the parent beyond its fill size.
+ */
+const fill_main_axis = length => `flex-grow: ${length.value}; flex-basis: 0%; ${length.min ? '' : 'min-width: 0;'}`
+
+const fill_cross_axis = spacing => spacing ? `calc(100% - ${spacing}px)` : '100%'
+
+const child_ratio_length = (property, parent, child) => child[property].type === 'ratio'
+	? `${property}: ${parent[property].type === 'grow' ? '0px' : `${child[property].value * 100}%`};`
+	: ''
+
+/*
  * styles necessary for a dom node containing one or more children (layout container)
  *
- * a layout container must choose an axis as its basis for its layout, even if it can only contain one child
+ * a layout container must choose an axis as its basis for layout, even if it can only contain one child
  */
 
 // static styles
@@ -17,25 +29,27 @@ export const layout = css`
 `
 
 // dynamic styles
-export const layout_style = ({ wrap }) => wrap ? 'flex-wrap: wrap;' : ''
+export const layout_style = ({ wrap }) => wrap ? 'flex-wrap: wrap; align-content: flex-start;' : ''
 
 // static styles for x layout
 export const layout_x = css`
 	flex-direction: row;
 `
 
-export const spacing_child = ({ spacing_x, spacing_y }) =>
+export const layout_child = (parent, child) =>
 	[
-		spacing_y ? `margin-top: ${ spacing_y }px;` : '',
-		spacing_x ? `margin-left: ${ spacing_x }px;` : '',
+		child_ratio_length('height', parent, child),
+		child_ratio_length('width', parent, child),
+		parent.spacing_y ? `margin-top: ${ parent.spacing_y }px;` : '',
+		parent.spacing_x ? `margin-left: ${ parent.spacing_x }px;` : '',
 	].join('')
 
 export const layout_x_child = ({ spacing_x = 0, spacing_y = 0 } = {}) => ({ height, width }) =>
 	[
-		height.base.type === 'fill' ? `height: calc(100% - ${spacing_y}px);` : '',
-		height.base.type === 'content' ? `height: auto;` : '',
-		width.base.type === 'fill' ? `flex-grow: ${width.base.value}; flex-shrink: 1;` : '',
-		width.base.type === 'content' ? `flex-grow: 0;` : ''
+		height.type === 'fill' ? `height: ${fill_cross_axis(spacing_y)};` : '',
+		height.type === 'grow' && height.value > 0 ? `height: ${fill_cross_axis(spacing_y)};` : '',
+		width.type === 'fill' ? fill_main_axis(width) : '',
+		width.type === 'grow' ? `flex-grow: ${width.value};` : ''
 	].join('')
 
 // static styles for y layout
@@ -45,10 +59,10 @@ export const layout_y = css`
 
 export const layout_y_child = ({ spacing_x = 0, spacing_y = 0 } = {}) => ({ height, width }) =>
 	[
-		height.base.type === 'fill' ? `flex-grow: ${height.base.value}; flex-shrink: 1;` : '',
-		height.base.type === 'content' ? `flex-grow: 0;` : '',
-		width.base.type === 'fill' ? `width: calc(100% - ${spacing_x}px);` : '',
-		width.base.type === 'content' ? `width: auto;` : ''
+		height.type === 'fill' ? fill_main_axis(height) : '',
+		height.type === 'grow' ? `flex-grow: ${height.value};` : '',
+		width.type === 'fill' ? `width: ${fill_cross_axis(spacing_x)};` : '',
+		width.type === 'grow' && width.value > 0 ? `width: ${fill_cross_axis(spacing_x)};` : ''
 	].join('')
 
 // dynamic styles for x layout

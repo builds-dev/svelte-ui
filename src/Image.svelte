@@ -13,13 +13,13 @@
 	$: width_prop = format_length($$props.width || content)
 	$: style = [
 		`object-position: ${origin_x * 100}% ${origin_y * 100}%;`,
-		height_prop.base.type !== 'content' ?  `height: 100%;` : '',
-		width_prop.base.type !== 'content' ?  `width: 100%;` : '',
+		height_prop.type !== 'content' ?  `height: 100%;` : '',
+		width_prop.type !== 'content' ?  `width: 100%;` : '',
 	].join('')
 
 
-	$: width = width_prop.base.type === 'px' ? width_prop.base.value : null
-	$: height = height_prop.base.type === 'px' ?  height_prop.base.value : null
+	$: width = width_prop.type === 'px' ? width_prop.value : null
+	$: height = height_prop.type === 'px' ?  height_prop.value : null
 </script>
 
 <Box

@@ -1,5 +1,15 @@
 import { css } from '@linaria/core'
-import { content, length_css } from './length'
+import { content } from './length'
+
+const target_value = ({ type, value }) => type === 'ratio' ? `${value * 100}%` : `${value}px`
+
+const length_css = (property, length) => {
+	return [
+		length.type === 'px' ? `${property}: ${length.value}px;` : '',
+		length.min.value > 0 ? `min-${property}: ${target_value(length.min)};` : '',
+		length.max.value === Infinity ? '' : `max-${property}: ${target_value(length.max)};`
+	].join(' ')
+}
 
 /*
  * styles necessary for a dom node child of a layout container
@@ -8,12 +18,10 @@ import { content, length_css } from './length'
 // static styles
 export const element = css`
 	display: flex;
-	flex-basis: auto;
-	flex-shrink: 0;
+	flex-direction: row;
+	flex: 0 0 auto;
 	position: relative;
 	box-sizing: border-box;
-	height: auto;
-	width: auto;
 	overflow: visible;
 `
 

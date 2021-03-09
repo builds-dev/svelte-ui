@@ -2,8 +2,9 @@
 	import { css } from '@linaria/core'
 	import Element from './Element.svelte'
 	import Layout_context from './Layout_context.svelte'
-	import { layout, layout_x, layout_style, layout_x_style, layout_x_child } from './layout'
+	import { layout, layout_x, layout_x_style, layout_x_child } from './layout'
 	import { nearby } from './nearby'
+	import { concat as classname_concat } from './util/classname'
 
 	const box = css`
 		& > :not(${nearby}) ~ :not(${nearby}) {
@@ -31,8 +32,8 @@
 <Element
 	bind:ref
 	{ ...$$restProps }
-	class={ [ $$props.class || '', box, layout_x, layout ].join(' ') }
-	style="{ layout_style($$props) }{ layout_x_style($$props) }{ style }"
+	class="{ classname_concat([ $$props.class, box, layout_x, layout ]) }"
+	style="{ layout_x_style($$props) }{ style }"
 >
 	<Layout_context
 		context_style={ layout_x_child() }

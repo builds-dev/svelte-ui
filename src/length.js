@@ -1,23 +1,33 @@
-const length_defaults = { min: 0, max: Infinity }
+const length = type => value => ({ type, value })
 
-export const fill = (portion = 1) => ({ base: { type: 'fill', value: portion }, ...length_defaults })
+export const length_defaults = { min: 0, max: Infinity }
+
+export const px = length('px')
+
+export const ratio = length('ratio')
+
+export const fill = length('fill')
 Object.assign(fill, fill(1))
 
-export const content = { base: { type: 'content' }, ...length_defaults }
+export const grow = length('grow')
+Object.assign(grow, grow(1))
 
-export const px = value => ({ base: { type: 'px', value }, ...length_defaults })
+export const content = grow(0)
 
-export const min = value => length => ({ ...format_length(length), min: value })
+export const format_length_property = length => typeof length === 'number' ? px(length) : length
 
-export const max = value => length => ({ ...format_length(length), max: value })
+const format_length_object = ({ type, value, min = 0, max = Infinity }) => ({
+	type,
+	value,
+	min: format_length_property(min),
+	max: format_length_property(max)
+})
 
-export const format_length = length => typeof length === 'number' ? px(length) : length
+export const format_length = length =>
+	format_length_object(format_length_property(length))
 
-export const length_css = (property, length) => {
-	const { base, min, max } = format_length(length)
-	return [
-		base.type === 'px' ? `${property}: ${base.value}px;` : '',
-		min ? `min-${property}: ${ min }px;` : '',
-		max == null || max === Infinity ? '' : `max-${property}: ${ max }px;`
-	].join(' ')
-}
+const modifier = prop => value => length => ({ ...format_length_property(length), [prop]: value })
+
+export const min = modifier('min')
+
+export const max = modifier('max')
