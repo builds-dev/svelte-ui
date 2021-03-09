@@ -14,16 +14,14 @@ npm install holographio/svelte-ui#v0.0.3-dist
 
 ```html
 <script>
-import { Viewport, Box, Column, Row } from '@holographio/svelte-ui'
+import { Box, Column, Row } from '@holographio/svelte-ui'
 </script>
 
-<Viewport>
-	<Column width={fill}>
-		<Row width={fill} center_y>
-			<Box>Hi there, world!</Box>
-		</Row>
-	</Column>
-</Viewport>
+<Column width={fill}>
+	<Row width={fill} center_y>
+		<Box>Hi there, world!</Box>
+	</Row>
+</Column>
 ```
 
 ## major differences from elm-ui
