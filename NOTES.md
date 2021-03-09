@@ -27,8 +27,8 @@
 				</div>
 			```
 
-- align-self: stretch; has the unfortunate, but obvious effect of overriding the parent's align-items value in regard to that child. This wouldn't matter if the child is truly taking up all the cross axis space in the parent, but that is not the case when the child also specifies a max value for that length, and it computed lesser than the parent's length. For example, a 100px tall row says to vertically center its children, and one of its children says to fill the height available, up to a maximum of 50px. The expectation is that the child will be its maximum 50px tall, and be vertically cenetered in the parent, but the child will be aligned to the top of the parent if the child has specified align-self: stretch;
-- align-self: self; is a limited expression compared to 100%, because percentage can express the full range of values up to and beyond the full length, whereas align-self: stretch can only express the equivalent of 100% (where contextually applicable).
+- `align-self: stretch;` has the unfortunate, but obvious effect of overriding the parent's `align-items` value in regard to that child. This wouldn't matter if the child is truly taking up all the cross axis space in the parent, but that is not the case when the child also specifies a max value for that length, and it computed lesser than the parent's length. For example, a 100px tall row says to vertically center its children, and one of its children says to fill the height available, up to a maximum of 50px. The expectation is that the child will be its maximum 50px tall, and be vertically cenetered in the parent, but the child will be aligned to the top of the parent if the child has specified `align-self: stretch;`
+- `align-self: stretch;` is a limited expression compared to 100%, because percentage can express the full range of values up to and beyond the full length, whereas `align-self: stretch;` can only express the equivalent of 100% (where contextually applicable).
 
 	- On account of the limitations of align-self: stretch and the contextual problems of height/width: 100%, this library's semantics can't be implemented with a one-to-one relationship between the library's components and dom nodes. A parent must be two nodes or a child must be two nodes.
 		- Regarding a parent being two nodes:
@@ -72,13 +72,13 @@ Having a way to specify the style of each row as it comes would be nice:
 NOTE:
 CSS `flex-direction: column; flex-wrap: wrap;` is SEVERELY flawed. When the column gets its width according to its children, and children wrap, they do not expand the column's width accordingly, but instead overflow. While the forementioned weakness means flex wrapping is undesirable, this behavior makes it so unreliable that it should just be disregarded entirely, as much as possible.
 ```html
-	<div style='display: flex; border: 3px solid orange;'>
-		<div style='display: flex; flex-direction: column; border: 3px solid red; flex-wrap: wrap; max-height: 50px;'>
-			<div>foo</div>
-			<div>bar</div>
-			<div>baz</div>
-		</div>
+<div style='display: flex; border: 3px solid orange;'>
+	<div style='display: flex; flex-direction: column; border: 3px solid red; flex-wrap: wrap; max-height: 50px;'>
+		<div>foo</div>
+		<div>bar</div>
+		<div>baz</div>
 	</div>
+</div>
 ```
 
 ## ratio
