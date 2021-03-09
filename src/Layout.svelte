@@ -1,10 +1,11 @@
 <script>
 	import Element from './Element.svelte'
+	import { content, format_length } from './length'
 	import {
 		layout,
 		layout_style as layout_any_style,
 		layout_x_style,
-		spacing_child,
+		layout_child,
 		spacing_context
 	} from './layout'
 	import Layout_context from './Layout_context.svelte'
@@ -33,17 +34,23 @@
 		spacing_context(spacing_x, spacing_y),
 		container_style
 	].join('')
+	$: height = format_length($$props.height || content)
+	$: width = format_length($$props.width || content)
+	$: element_props = { ...$$restProps, height, width }
+
 	$: context_values = {
+		height,
+		width,
 		spacing_x: typeof spacing_x === 'number' ? spacing_x : 0,
 		spacing_y: typeof spacing_y === 'number' ? spacing_y : 0
 	}
-	$: context_style = props => `${spacing_child(context_values)}${layout_context (context_values) (props)}`
+	$: context_style = props => `${layout_child(context_values, props)}${layout_context (context_values) (props)}`
 </script>
 
 <Element
 	bind:ref
 	style={ outer_style }
-	{ ...$$restProps }
+	{ ...element_props }
 >
 	<div
 		class="{ layout_class } { layout }"

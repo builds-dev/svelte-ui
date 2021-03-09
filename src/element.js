@@ -1,12 +1,13 @@
 import { css } from '@linaria/core'
-import { content, format_length } from './length'
+import { content } from './length'
 
-const length_css = (property, { type, value, min, max }) => {
+const target_value = ({ type, value }) => type === 'ratio' ? `${value * 100}%` : `${value}px`
+
+const length_css = (property, length) => {
 	return [
-		type === 'px' ? `${property}: ${value}px;` : '',
-		type === 'ratio' ? `${property}: ${value * 100}%;` : '',
-		min ? `min-${property}: ${ min }px;` : '',
-		max == null || max === Infinity ? '' : `max-${property}: ${ max }px;`
+		length.type === 'px' ? `${property}: ${length.value}px;` : '',
+		length.min.value > 0 ? `min-${property}: ${target_value(length.min)};` : '',
+		length.max.value === Infinity ? '' : `max-${property}: ${target_value(length.max)};`
 	].join(' ')
 }
 

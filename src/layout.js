@@ -7,12 +7,17 @@ import { space_evenly, space_between, space_around } from './spacing.js'
  * potentially causing content to expand the parent beyond its fill size.
  */
 const fill_main_axis = length => `flex-grow: ${length.value}; flex-basis: 0%; ${length.min ? '' : 'min-width: 0;'}`
+
 const fill_cross_axis = spacing => spacing ? `calc(100% - ${spacing}px)` : '100%'
+
+const child_ratio_length = (property, parent, child) => child[property].type === 'ratio'
+	? `${property}: ${parent[property].type === 'grow' ? '0px' : `${child[property].value * 100}%`};`
+	: ''
 
 /*
  * styles necessary for a dom node containing one or more children (layout container)
  *
- * a layout container must choose an axis as its basis for its layout, even if it can only contain one child
+ * a layout container must choose an axis as its basis for layout, even if it can only contain one child
  */
 
 // static styles
@@ -31,10 +36,12 @@ export const layout_x = css`
 	flex-direction: row;
 `
 
-export const spacing_child = ({ spacing_x, spacing_y }) =>
+export const layout_child = (parent, child) =>
 	[
-		spacing_y ? `margin-top: ${ spacing_y }px;` : '',
-		spacing_x ? `margin-left: ${ spacing_x }px;` : '',
+		child_ratio_length('height', parent, child),
+		child_ratio_length('width', parent, child),
+		parent.spacing_y ? `margin-top: ${ parent.spacing_y }px;` : '',
+		parent.spacing_x ? `margin-left: ${ parent.spacing_x }px;` : '',
 	].join('')
 
 export const layout_x_child = ({ spacing_x = 0, spacing_y = 0 } = {}) => ({ height, width }) =>
