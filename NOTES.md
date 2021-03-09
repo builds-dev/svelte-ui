@@ -5,14 +5,14 @@
 		- using height/width: 100%; requires subtracting the margin... the child takes up the full height of the parent and additionally has the margin inside of the parent
 				demonstrated here:
 
-					```html
-						<div style='display: flex;'>
-							<div style='display: flex; align-self: stretch;'>
-								<div style='display: flex; height: 100%; width: 100px; margin-top: 50px; background: lightblue;'></div>
-								<div style='display: flex; height: 100px; width: 100px; margin-top: 50px; background: lightgreen;'></div>
-							</div>
-						</div>
-					```
+			```html
+				<div style='display: flex;'>
+					<div style='display: flex; align-self: stretch;'>
+						<div style='display: flex; height: 100%; width: 100px; margin-top: 50px; background: lightblue;'></div>
+						<div style='display: flex; height: 100px; width: 100px; margin-top: 50px; background: lightgreen;'></div>
+					</div>
+				</div>
+			```
 
 			while align-self: stretch; takes up the remaining space available accounting for the margin.
 
@@ -20,12 +20,12 @@
 			align-self-stretch requires no additional concern but that the parent has display: flex;
 				demonstrated here:
 
-					```html
-						<div style='display: flex;'>
-							<div style='display: flex; align-self: stretch; width: 100px; background: lightblue;'></div>
-							<div style='display: flex; height: 100px; width: 100px; background: lightgreen;'></div>
-						</div>
-					```
+			```html
+				<div style='display: flex;'>
+					<div style='display: flex; align-self: stretch; width: 100px; background: lightblue;'></div>
+					<div style='display: flex; height: 100px; width: 100px; background: lightgreen;'></div>
+				</div>
+			```
 
 - align-self: stretch; has the unfortunate, but obvious effect of overriding the parent's align-items value in regard to that child. This wouldn't matter if the child is truly taking up all the cross axis space in the parent, but that is not the case when the child also specifies a max value for that length, and it computed lesser than the parent's length. For example, a 100px tall row says to vertically center its children, and one of its children says to fill the height available, up to a maximum of 50px. The expectation is that the child will be its maximum 50px tall, and be vertically cenetered in the parent, but the child will be aligned to the top of the parent if the child has specified align-self: stretch;
 - align-self: self; is a limited expression compared to 100%, because percentage can express the full range of values up to and beyond the full length, whereas align-self: stretch can only express the equivalent of 100% (where contextually applicable).
@@ -64,22 +64,22 @@ Eventually, it would be good to implement wrapping in a way that reveals its tru
 Having a way to specify the style of each row as it comes would be nice:
 
 ```html
-	<Rows each={(row, index) => ({ height: (index + 1) * 50, width: fill })}>
-		<!-- children that get put into rows in here -->
-	</Rows>
+<Rows each={(row, index) => ({ height: (index + 1) * 50, width: fill })}>
+	<!-- children that get put into rows in here -->
+</Rows>
 ```
 
 NOTE:
-CSS `flex-direciton: column; flex-wrap: wrap;` is SEVERELY flawed. When the column gets its width according to its children, and children wrap, they do not expand the column's width accordingly, but instead overflow. While the forementioned weakness means flex wrapping is undesirable, this behavior makes it so unreliable that it should just be disregarded entirely, as much as possible.
-	```html
-		<div style='display: flex; border: 3px solid orange;'>
-			<div style='display: flex; flex-direction: column; border: 3px solid red; flex-wrap: wrap; max-height: 50px;'>
-				<div>foo</div>
-				<div>bar</div>
-				<div>baz</div>
-			</div>
+CSS `flex-direction: column; flex-wrap: wrap;` is SEVERELY flawed. When the column gets its width according to its children, and children wrap, they do not expand the column's width accordingly, but instead overflow. While the forementioned weakness means flex wrapping is undesirable, this behavior makes it so unreliable that it should just be disregarded entirely, as much as possible.
+```html
+	<div style='display: flex; border: 3px solid orange;'>
+		<div style='display: flex; flex-direction: column; border: 3px solid red; flex-wrap: wrap; max-height: 50px;'>
+			<div>foo</div>
+			<div>bar</div>
+			<div>baz</div>
 		</div>
-	```
+	</div>
+```
 
 ## ratio
 
