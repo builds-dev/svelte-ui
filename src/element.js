@@ -3,6 +3,13 @@ import { content } from './length'
 
 const target_value = ({ type, value }) => type === 'ratio' ? `${value * 100}%` : `${value}px`
 
+/*
+	TODO: to settle conflicts between given size, min, and/or max, perhaps the latest specified should always win
+	max (10) (100) // => 10
+	min (100) (10) // => 100
+	min (100) (max (10) (fill)) // => 100
+	max (10) (min (100) (fill)) // => 10
+*/
 const length_css = (property, length) => {
 	return [
 		length.type === 'px' ? `${property}: ${length.value}px;` : '',

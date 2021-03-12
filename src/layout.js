@@ -2,6 +2,9 @@ import { css } from '@linaria/core'
 import { element } from './element'
 import { space_evenly, space_between, space_around } from './spacing.js'
 
+/*
+	TODO: test that min/max work properly with fill and grow
+*/
 const fill_main_axis = (property, length) => `flex-grow: ${length.value}; flex-basis: 0px; ${property}: 0px; ${length.min ? '' : `min-${property}: 0px;`}`
 
 const fill_cross_axis = spacing => spacing ? `calc(100% - ${spacing}px)` : '100%'
