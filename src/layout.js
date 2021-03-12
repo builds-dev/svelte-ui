@@ -2,11 +2,7 @@ import { css } from '@linaria/core'
 import { element } from './element'
 import { space_evenly, space_between, space_around } from './spacing.js'
 
-/*
- * NOTE: an element with `{dimension}=fill` must specify a min-{dimension} (i.e. min-width: 0) or min-{dimension} will default to min-content,
- * potentially causing content to expand the parent beyond its fill size.
- */
-const fill_main_axis = length => `flex-grow: ${length.value}; flex-basis: 0%; ${length.min ? '' : 'min-width: 0;'}`
+const fill_main_axis = (property, length) => `flex-grow: ${length.value}; flex-basis: 0px; ${property}: 0px; ${length.min ? '' : `min-${property}: 0px;`}`
 
 const fill_cross_axis = spacing => spacing ? `calc(100% - ${spacing}px)` : '100%'
 
@@ -48,7 +44,7 @@ export const layout_x_child = ({ spacing_x = 0, spacing_y = 0 } = {}) => ({ heig
 	[
 		height.type === 'fill' ? `height: ${fill_cross_axis(spacing_y)};` : '',
 		height.type === 'grow' && height.value > 0 ? `height: ${fill_cross_axis(spacing_y)};` : '',
-		width.type === 'fill' ? fill_main_axis(width) : '',
+		width.type === 'fill' ? fill_main_axis('width', width) : '',
 		width.type === 'grow' ? `flex-grow: ${width.value};` : ''
 	].join('')
 
@@ -59,7 +55,7 @@ export const layout_y = css`
 
 export const layout_y_child = ({ spacing_x = 0, spacing_y = 0 } = {}) => ({ height, width }) =>
 	[
-		height.type === 'fill' ? fill_main_axis(height) : '',
+		height.type === 'fill' ? fill_main_axis('height', height) : '',
 		height.type === 'grow' ? `flex-grow: ${height.value};` : '',
 		width.type === 'fill' ? `width: ${fill_cross_axis(spacing_x)};` : '',
 		width.type === 'grow' && width.value > 0 ? `width: ${fill_cross_axis(spacing_x)};` : ''
