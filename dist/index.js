@@ -484,6 +484,14 @@ const target_value = ({
   type,
   value
 }) => type === 'ratio' ? `${value * 100}%` : `${value}px`;
+/*
+	TODO: to settle conflicts between given size, min, and/or max, perhaps the latest specified should always win
+	max (10) (100) // => 10
+	min (100) (10) // => 100
+	min (100) (max (10) (fill)) // => 100
+	max (10) (min (100) (fill)) // => 10
+*/
+
 
 const length_css = (property, length) => {
   return [length.type === 'px' ? `${property}: ${length.value}px;` : '', length.min.value > 0 ? `min-${property}: ${target_value(length.min)};` : '', length.max.value === Infinity ? '' : `max-${property}: ${target_value(length.max)};`].join(' ');
@@ -520,11 +528,10 @@ var css_248z$1 = ".layout_lb7yjy4{display:-webkit-box;display:-webkit-flex;displ
 styleInject(css_248z$1);
 
 /*
- * NOTE: an element with `{dimension}=fill` must specify a min-{dimension} (i.e. min-width: 0) or min-{dimension} will default to min-content,
- * potentially causing content to expand the parent beyond its fill size.
- */
+	TODO: test that min/max work properly with fill and grow
+*/
 
-const fill_main_axis = length => `flex-grow: ${length.value}; flex-basis: 0%; ${length.min ? '' : 'min-width: 0;'}`;
+const fill_main_axis = (property, length) => `flex-grow: ${length.value}; flex-basis: 0px; ${property}: 0px; ${length.min ? '' : `min-${property}: 0px;`}`;
 
 const fill_cross_axis = spacing => spacing ? `calc(100% - ${spacing}px)` : '100%';
 
@@ -551,7 +558,7 @@ const layout_x_child = ({
 } = {}) => ({
   height,
   width
-}) => [height.type === 'fill' ? `height: ${fill_cross_axis(spacing_y)};` : '', height.type === 'grow' && height.value > 0 ? `height: ${fill_cross_axis(spacing_y)};` : '', width.type === 'fill' ? fill_main_axis(width) : '', width.type === 'grow' ? `flex-grow: ${width.value};` : ''].join(''); // static styles for y layout
+}) => [height.type === 'fill' ? `height: ${fill_cross_axis(spacing_y)};` : '', height.type === 'grow' && height.value > 0 ? `height: ${fill_cross_axis(spacing_y)};` : '', width.type === 'fill' ? fill_main_axis('width', width) : '', width.type === 'grow' ? `flex-grow: ${width.value};` : ''].join(''); // static styles for y layout
 
 const layout_y = "layout_y_l8o4g34";
 const layout_y_child = ({
@@ -560,7 +567,7 @@ const layout_y_child = ({
 } = {}) => ({
   height,
   width
-}) => [height.type === 'fill' ? fill_main_axis(height) : '', height.type === 'grow' ? `flex-grow: ${height.value};` : '', width.type === 'fill' ? `width: ${fill_cross_axis(spacing_x)};` : '', width.type === 'grow' && width.value > 0 ? `width: ${fill_cross_axis(spacing_x)};` : ''].join(''); // dynamic styles for x layout
+}) => [height.type === 'fill' ? fill_main_axis('height', height) : '', height.type === 'grow' ? `flex-grow: ${height.value};` : '', width.type === 'fill' ? `width: ${fill_cross_axis(spacing_x)};` : '', width.type === 'grow' && width.value > 0 ? `width: ${fill_cross_axis(spacing_x)};` : ''].join(''); // dynamic styles for x layout
 
 const layout_x_style = ({
   align_bottom,
@@ -932,10 +939,10 @@ function create_default_slot_1(ctx) {
   let current;
   const default_slot_template =
   /*#slots*/
-  ctx[5].default;
+  ctx[7].default;
   const default_slot = create_slot(default_slot_template, ctx,
   /*$$scope*/
-  ctx[7], null);
+  ctx[10], null);
   return {
     c() {
       if (default_slot) default_slot.c();
@@ -957,10 +964,10 @@ function create_default_slot_1(ctx) {
       if (default_slot) {
         if (default_slot.p && dirty &
         /*$$scope*/
-        128) {
+        1024) {
           update_slot(default_slot, default_slot_template, ctx,
           /*$$scope*/
-          ctx[7], dirty, null, null);
+          ctx[10], dirty, null, null);
         }
       }
     },
@@ -981,7 +988,7 @@ function create_default_slot_1(ctx) {
     }
 
   };
-} // (32:0) <Element  bind:ref  { ...$$restProps }  class="{ classname_concat([ $$props.class, box, layout_x, layout ]) }"  style="{ layout_x_style($$props) }{ style }" >
+} // (42:0) <Element  bind:ref  style="{ layout_x_style($$props) }{ style }"  { ...element_props } >
 
 
 function create_default_slot$1(ctx) {
@@ -989,7 +996,9 @@ function create_default_slot$1(ctx) {
   let current;
   layout_context = new Layout_context({
     props: {
-      context_style: layout_x_child(),
+      context_style:
+      /*func*/
+      ctx[8],
       $$slots: {
         default: [create_default_slot_1]
       },
@@ -1014,10 +1023,15 @@ function create_default_slot$1(ctx) {
 
     p(ctx, dirty) {
       const layout_context_changes = {};
+      if (dirty &
+      /*context_values*/
+      4) layout_context_changes.context_style =
+      /*func*/
+      ctx[8];
 
       if (dirty &
       /*$$scope*/
-      128) {
+      1024) {
         layout_context_changes.$$scope = {
           dirty,
           ctx
@@ -1049,25 +1063,19 @@ function create_fragment$2(ctx) {
   let element_1;
   let updating_ref;
   let current;
-  const element_1_spread_levels = [
-  /*$$restProps*/
-  ctx[3], {
-    class: concat([
-    /*$$props*/
-    ctx[4].class,
-    /*box*/
-    ctx[2], layout_x, layout])
-  }, {
+  const element_1_spread_levels = [{
     style: "" + (layout_x_style(
     /*$$props*/
     ctx[4]) +
     /*style*/
     ctx[1])
-  }];
+  },
+  /*element_props*/
+  ctx[3]];
 
   function element_1_ref_binding(value) {
     /*element_1_ref_binding*/
-    ctx[6].call(null, value);
+    ctx[9].call(null, value);
   }
 
   let element_1_props = {
@@ -1111,20 +1119,8 @@ function create_fragment$2(ctx) {
 
     p(ctx, [dirty]) {
       const element_1_changes = dirty &
-      /*$$restProps, classname_concat, $$props, box, layout_x, layout, layout_x_style, style*/
-      30 ? get_spread_update(element_1_spread_levels, [dirty &
-      /*$$restProps*/
-      8 && get_spread_object(
-      /*$$restProps*/
-      ctx[3]), dirty &
-      /*classname_concat, $$props, box, layout_x, layout*/
-      20 && {
-        class: concat([
-        /*$$props*/
-        ctx[4].class,
-        /*box*/
-        ctx[2], layout_x, layout])
-      }, dirty &
+      /*layout_x_style, $$props, style, element_props*/
+      26 ? get_spread_update(element_1_spread_levels, [dirty &
       /*layout_x_style, $$props, style*/
       18 && {
         style: "" + (layout_x_style(
@@ -1132,11 +1128,15 @@ function create_fragment$2(ctx) {
         ctx[4]) +
         /*style*/
         ctx[1])
-      }]) : {};
+      }, dirty &
+      /*element_props*/
+      8 && get_spread_object(
+      /*element_props*/
+      ctx[3])]) : {};
 
       if (dirty &
-      /*$$scope*/
-      128) {
+      /*$$scope, context_values*/
+      1028) {
         element_1_changes.$$scope = {
           dirty,
           ctx
@@ -1175,6 +1175,10 @@ function create_fragment$2(ctx) {
 }
 
 function instance$2($$self, $$props, $$invalidate) {
+  let height;
+  let width;
+  let context_values;
+  let element_props;
   const omit_props_names = ["ref", "style"];
   let $$restProps = compute_rest_props($$props, omit_props_names);
   let {
@@ -1189,6 +1193,8 @@ function instance$2($$self, $$props, $$invalidate) {
     style = ""
   } = $$props;
 
+  const func = props => `${layout_child(context_values, props)}${layout_x_child()(props)}`;
+
   function element_1_ref_binding(value) {
     ref = value;
     $$invalidate(0, ref);
@@ -1196,14 +1202,35 @@ function instance$2($$self, $$props, $$invalidate) {
 
   $$self.$$set = $$new_props => {
     $$invalidate(4, $$props = assign(assign({}, $$props), exclude_internal_props($$new_props)));
-    $$invalidate(3, $$restProps = compute_rest_props($$props, omit_props_names));
+    $$invalidate(12, $$restProps = compute_rest_props($$props, omit_props_names));
     if ("ref" in $$new_props) $$invalidate(0, ref = $$new_props.ref);
     if ("style" in $$new_props) $$invalidate(1, style = $$new_props.style);
-    if ("$$scope" in $$new_props) $$invalidate(7, $$scope = $$new_props.$$scope);
+    if ("$$scope" in $$new_props) $$invalidate(10, $$scope = $$new_props.$$scope);
+  };
+
+  $$self.$$.update = () => {
+     $$invalidate(5, height = format_length($$props.height || content));
+
+     $$invalidate(6, width = format_length($$props.width || content));
+
+    if ($$self.$$.dirty &
+    /*height, width*/
+    96) {
+       $$invalidate(2, context_values = {
+        height,
+        width
+      });
+    }
+
+     $$invalidate(3, element_props = { ...$$restProps,
+      class: concat([$$props.class, box, layout_x, layout]),
+      height,
+      width
+    });
   };
 
   $$props = exclude_internal_props($$props);
-  return [ref, style, box, $$restProps, $$props, slots, element_1_ref_binding, $$scope];
+  return [ref, style, context_values, element_props, $$props, height, width, slots, func, element_1_ref_binding, $$scope];
 }
 
 class Box extends SvelteComponent {
