@@ -6,12 +6,12 @@
 				demonstrated here:
 
 			```html
-				<div style='display: flex;'>
-					<div style='display: flex; align-self: stretch;'>
-						<div style='display: flex; height: 100%; width: 100px; margin-top: 50px; background: lightblue;'></div>
-						<div style='display: flex; height: 100px; width: 100px; margin-top: 50px; background: lightgreen;'></div>
-					</div>
+			<div style='display: flex;'>
+				<div style='display: flex; align-self: stretch;'>
+					<div style='display: flex; height: 100%; width: 100px; margin-top: 50px; background: lightblue;'></div>
+					<div style='display: flex; height: 100px; width: 100px; margin-top: 50px; background: lightgreen;'></div>
 				</div>
+			</div>
 			```
 
 			while align-self: stretch; takes up the remaining space available accounting for the margin.
@@ -21,10 +21,10 @@
 				demonstrated here:
 
 			```html
-				<div style='display: flex;'>
-					<div style='display: flex; align-self: stretch; width: 100px; background: lightblue;'></div>
-					<div style='display: flex; height: 100px; width: 100px; background: lightgreen;'></div>
-				</div>
+			<div style='display: flex;'>
+				<div style='display: flex; align-self: stretch; width: 100px; background: lightblue;'></div>
+				<div style='display: flex; height: 100px; width: 100px; background: lightgreen;'></div>
+			</div>
 			```
 
 - `align-self: stretch;` has the unfortunate, but obvious effect of overriding the parent's `align-items` value in regard to that child. This wouldn't matter if the child is truly taking up all the cross axis space in the parent, but that is not the case when the child also specifies a max value for that length, and it computed lesser than the parent's length. For example, a 100px tall row says to vertically center its children, and one of its children says to fill the height available, up to a maximum of 50px. The expectation is that the child will be its maximum 50px tall, and be vertically cenetered in the parent, but the child will be aligned to the top of the parent if the child has specified `align-self: stretch;`
