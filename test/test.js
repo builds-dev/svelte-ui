@@ -27,20 +27,28 @@ Object.assign(document.body.style, {
 	minHeight: '100vh'
 })
 
-Object.entries(suites)
-	.forEach(([ suite_name, tests ]) => {
-		const test = suite(suite_name)
-		tests.forEach(({ test_name, Component }) => {
-			test(test_name, () => {
-				const component = new Component({ target: document.body })
-				if (!keep_alive) {
-					component.$destroy()
-				}
-			})
-		})
-		test.run()
-	})
+const animation_frame = () => new Promise(resolve => window.requestAnimationFrame(resolve))
 
-if (!keep_alive) {
-	window.requestAnimationFrame(() => window.close())
-}
+Promise.all(
+	Object.entries(suites)
+		.map(([ suite_name, tests ]) => {
+			const test = suite(suite_name)
+			const promises = tests.map(({ test_name, Component }) => new Promise(resolve => {
+				test(test_name, async () => {
+					try {
+						let async_work = () => Promise.resolve()
+						const destroy_after = f => async_work = f
+						const component = new Component({ target: document.body, props: { destroy_after } })
+						await animation_frame()
+						await async_work().finally(() => keep_alive || component.$destroy())
+					} finally {
+						resolve()
+					}
+				})
+			}))
+			test.run()
+			return Promise.all(promises)
+		})
+)
+	.then(animation_frame)
+	.then(() => keep_alive || window.close())
