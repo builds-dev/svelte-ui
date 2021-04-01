@@ -27,7 +27,9 @@
 		style
 	].join('')
 	$: inner_style = [
-		'flex-grow: 1; align-self: stretch;',
+		// NOTE: width: 100% is necessary for Safari so that width={fill} children don't cause this element to get wider
+		// TODO: are there cases where height: 100% is also necessary for the same reason? This all needs to be fully investigated and documented.
+		'flex-grow: 1; align-self: stretch; width: 100%;',
 		layout_any_style($$props),
 		layout_style($$props),
 		layout_spacing(spacing_x, spacing_y),

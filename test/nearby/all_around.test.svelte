@@ -2,6 +2,7 @@
 	import * as assert from 'uvu/assert'
 	import { onMount } from 'svelte'
 	import { Above, Below, On_left, On_right, In_front, In_back, Box, Image, fill, px } from '../../src/index'
+	import { rendered_px_equal } from '../util'
 
 	let content
 	let in_back
@@ -30,9 +31,8 @@
 			content_rect,
 			'in_front is in the same area as regular content'
 		)
-		assert.equal(
-			above_rect.bottom,
-			content_rect.top,
+		assert.ok(
+			rendered_px_equal (above_rect.bottom) (content_rect.top),
 			'bottom of above area is the top of the regular content area'
 		)
 		assert.equal(
@@ -40,9 +40,8 @@
 			content_rect.bottom,
 			'top of bottom area is the bottom of the regular content area'
 		)
-		assert.equal(
-			on_left_rect.right,
-			content_rect.left,
+		assert.ok(
+			rendered_px_equal (on_left_rect.right) (content_rect.left),
 			'right of left area is the left of the regular content area'
 		)
 		assert.equal(
