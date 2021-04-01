@@ -1416,7 +1416,7 @@ function create_default_slot_1$1(ctx) {
 	};
 }
 
-// (50:0) <Element  bind:ref  style={ outer_style }  { ...element_props } >
+// (52:0) <Element  bind:ref  style={ outer_style }  { ...element_props } >
 function create_default_slot$2(ctx) {
 	let div;
 	let layout_context_1;
@@ -1608,7 +1608,9 @@ function instance$4($$self, $$props, $$invalidate) {
 		 $$invalidate(2, outer_style = [layout_x_style($$props), style].join(""));
 
 		 $$invalidate(3, inner_style = [
-			"flex-grow: 1; align-self: stretch;",
+			// NOTE: width: 100% is necessary for Safari so that width={fill} children don't cause this element to get wider
+			// TODO: are there cases where height: 100% is also necessary for the same reason? This all needs to be fully investigated and documented.
+			"flex-grow: 1; align-self: stretch; width: 100%;",
 			layout_style($$props),
 			layout_style$1($$props),
 			layout_spacing(spacing_x, spacing_y),
