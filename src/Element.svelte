@@ -22,8 +22,12 @@
 		}
 	})
 
-	$: height = format_length($$props.height || content)
-	$: width = format_length($$props.width || content)
+	/*
+		TODO: this condition and format_length may not be accomplishing anything here,
+			in which case, remove the next 3 lines and replace `props` with `$$props` in the template
+	*/
+	$: height = format_length('height' in $$props ? $$props.height : content)
+	$: width = format_length('width' in $$props ? $$props.width : content)
 	$: props = { ...$$props, height, width }
 
 	const { style: context_style, class: context_class } = get_layout_context()

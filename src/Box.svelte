@@ -28,8 +28,8 @@
 	`
 	export let ref = undefined
 	export let style = ''
-	$: height = format_length($$props.height || content)
-	$: width = format_length($$props.width || content)
+	$: height = format_length('height' in $$props ? $$props.height : content)
+	$: width = format_length('width' in $$props ? $$props.width : content)
 	$: context_values = { height, width }
 	$: element_props = {
 		...$$restProps,
