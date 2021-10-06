@@ -873,8 +873,8 @@ function instance$1($$self, $$props, $$invalidate) {
 	};
 
 	$$self.$$.update = () => {
-		 $$invalidate(7, height = format_length($$props.height || content));
-		 $$invalidate(8, width = format_length($$props.width || content));
+		 $$invalidate(7, height = format_length("height" in $$props ? $$props.height : content));
+		 $$invalidate(8, width = format_length("width" in $$props ? $$props.width : content));
 		 $$invalidate(2, props = { ...$$props, height, width });
 		 $$invalidate(3, class_name = concat([$$props.class, context_class, element$1]));
 	};
@@ -1205,9 +1205,9 @@ function instance$2($$self, $$props, $$invalidate) {
   };
 
   $$self.$$.update = () => {
-     $$invalidate(5, height = format_length($$props.height || content));
+     $$invalidate(5, height = format_length("height" in $$props ? $$props.height : content));
 
-     $$invalidate(6, width = format_length($$props.width || content));
+     $$invalidate(6, width = format_length("width" in $$props ? $$props.width : content));
 
     if ($$self.$$.dirty &
     /*height, width*/
@@ -1576,7 +1576,7 @@ function instance$4($$self, $$props, $$invalidate) {
 	let { $$slots: slots = {}, $$scope } = $$props;
 	let { container_style = "" } = $$props; // TODO: this is temporary, especially in case `align-content` is needed
 	let { style = "" } = $$props;
-	let { ref } = $$props;
+	let { ref = undefined } = $$props;
 	let { layout_class } = $$props;
 	let { layout_style: layout_style$1 } = $$props;
 	let { layout_spacing } = $$props;
@@ -1618,8 +1618,8 @@ function instance$4($$self, $$props, $$invalidate) {
 			container_style
 		].join(""));
 
-		 $$invalidate(13, height = format_length($$props.height || content));
-		 $$invalidate(14, width = format_length($$props.width || content));
+		 $$invalidate(13, height = format_length("height" in $$props ? $$props.height : content));
+		 $$invalidate(14, width = format_length("width" in $$props ? $$props.width : content));
 		 $$invalidate(4, element_props = { ...$$restProps, height, width });
 
 		if ($$self.$$.dirty & /*height, width, spacing_x, spacing_y*/ 30720) {
