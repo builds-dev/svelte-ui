@@ -14,7 +14,7 @@
 
 	export let container_style = '' // TODO: this is temporary, especially in case `align-content` is needed
 	export let style = ''
-	export let ref
+	export let ref = undefined
 	export let layout_class
 	export let layout_style
 	export let layout_spacing
@@ -36,8 +36,8 @@
 		spacing_context(spacing_x, spacing_y),
 		container_style
 	].join('')
-	$: height = format_length($$props.height || content)
-	$: width = format_length($$props.width || content)
+	$: height = format_length('height' in $$props ? $$props.height : content)
+	$: width = format_length('width' in $$props ? $$props.width : content)
 	$: element_props = { ...$$restProps, height, width }
 
 	$: context_values = {
