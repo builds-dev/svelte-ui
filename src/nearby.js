@@ -1,9 +1,13 @@
 import { css } from '@linaria/core'
 
-
+/*
+	The `position` of `element_style` in `element.js` overrides this `position: absolute`, breaking nearby elements.
+	Nearby elements are deprecated by anchoring and should be removed in the future.
+	Meanwhile, this bug is fixed by `position: absolute !important;`.
+*/
 export const nearby = css`
 	display: flex;
-	position: absolute;
+	position: absolute !important;
 	pointer-events: none;
 `
 

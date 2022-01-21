@@ -46,7 +46,7 @@ There is no direct support for wrapping rows/columns because the flex (and any c
 For now, when `flex-wrap: wrap` is needed, use the `container_style` prop.
 Examples:
 
-```html
+```svelte
 <Row height={content} container_style='flex-wrap: wrap; align-content: flex-start;'>
 	<Box height={20}/>
 	<Box height={fill}/> <!-- fills 20 px -->
@@ -63,7 +63,7 @@ The above behavior is simple and predictable, but limiting. Try different `align
 Eventually, it would be good to implement wrapping in a way that reveals its true nature: a wrapping row is actually a column of dynamically created rows.
 Having a way to specify the style of each row as it comes would be nice:
 
-```html
+```svelte
 <Rows each={(row, index) => ({ height: (index + 1) * 50, width: fill })}>
 	<!-- children that get put into rows in here -->
 </Rows>
@@ -88,3 +88,21 @@ TODO: I am not so sure this is right, but it's the only consistent, rational tak
 `ratio` refers to a ratio of the space claimed by the parent, in contrast to the space taken by its children. The space claimed by a `content/grow` parent is 0, because it is just whatever size its children are.
 When a parent has content/grow on a dimension, ratio values on that dimension for the child, for width/height, max, and min must evaluate to 0.
 i.e the content/grow parent is claiming 0 space, and a width or max width of 0.5 of 0 is 0.
+
+## anchoring
+
+```css
+/*
+	anchor_x={[ anchor_point_x, parent_anchor_point_x ]}
+*/
+left: ${parent_anchor_point_x * 100}%;
+transform: translateX(${anchor_point_x * -100}%);
+/* `margin-right` compensates the line-width changed by `left` */
+margin-right: ${parent_anchor_point_x * -100}%;
+
+/*
+	anchor_y={[ anchor_point_y, parent_anchor_point_y ]}
+*/
+top: ${parent_anchor_point_y * 100}%;
+transform: translateY(${anchor_point_y * -100}%);
+```
