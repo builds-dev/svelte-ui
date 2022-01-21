@@ -24,6 +24,37 @@ import { Box, Column, Row } from '@holographio/svelte-ui'
 </Column>
 ```
 
+## api
+
+### `Box`
+
+#### `anchor_x={anchor_points}`, `anchor_y={anchor_point}`
+
+Anchors adjust the placement of an element relative to its parent. An anchored element has no effect on sibling elements, and is not affected by sibling elements.
+
+```svelte
+<Box height={100} width={200}>
+	<!-- right side anchored to parent's right side, bottom side anchored to parent's top side -->
+	<Box height={100} width={100} anchor_x={[ 1, 1 ]} anchor_y={[ 1, 0 ]}></Box>
+</Box>
+```
+```
+    ╭――╮
+    ╰――╯
+╭――――――╮
+╰――――――╯
+```
+
+`anchor_points` are a pair of `number`, `anchor_point` and `parent_anchor_point`.
+Anchor points refer to a point on an axis, relative to an element, where `0` refers to the start of the element and `1` refers to the end of the element.
+
+For example:
+- 0 on the x axis is the left side of the element.
+- 1 on the x axis is the right side of the element.
+- 0 on the y axis is the top side of the element.
+- 1 on the y axis is the bottom side of the element.
+- 0.5 is the center of the element along the given axis.
+
 ## major differences from elm-ui
 
 TODO: remove this section, because te library is increasingly way different from elm-ui, svelte aside.

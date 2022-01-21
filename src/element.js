@@ -19,15 +19,14 @@ const length_css = (property, length) => {
 }
 
 /*
- * styles necessary for a dom node child of a layout container
- */
+	 styles necessary for a dom node child of a layout container
+*/
 
 // static styles
 export const element = css`
 	display: flex;
 	flex-direction: row;
 	flex: 0 0 auto;
-	position: relative;
 	box-sizing: border-box;
 	overflow: visible;
 `
@@ -35,6 +34,8 @@ export const element = css`
 const overflow_style = (axis, clip, scroll) => clip || scroll
 	? `overflow-${axis}: ${clip ? 'hidden' : 'auto'};`
 	: ''
+
+const position = (anchor_x, anchor_y) => `position: ${anchor_x || anchor_y ? 'absolute' : 'relative'};`
 
 // dynamic styles
 export const element_style = (
@@ -45,6 +46,8 @@ export const element_style = (
 		opacity,
 		x,
 		y,
+		anchor_x,
+		anchor_y,
 		clip_x,
 		clip_y,
 		scroll_x,
@@ -58,7 +61,15 @@ export const element_style = (
 		padding == null
 			? ''
 			: `padding: ${Array.isArray(padding) ? padding.map(n => `${n}px`).join(' ') : `${padding}px` };`,
-		x || y ? `transform: translate3d(${ x || 0 }px, ${ y || 0 }px, 0);` : '',
+		anchor_x ? `left: ${anchor_x[1] * 100}%; margin-right: ${anchor_x[1] * -100}%;` : '',
+		anchor_y ? `top: ${anchor_y[1] * 100}%;` : '',
+		position (anchor_x, anchor_y),
+		x || y || anchor_x || anchor_y
+			?
+				`transform: translate3d(calc(${(anchor_x?.[0] ?? 0) * -100}% + ${x || 0}px), calc(${(anchor_y?.[0] ?? 0) * -100}% + ${y || 0}px), 0);`
+			:
+				''
+		,
 		overflow_style('x', clip_x, scroll_x),
 		overflow_style('y', clip_y, scroll_y)
 	].join('')
