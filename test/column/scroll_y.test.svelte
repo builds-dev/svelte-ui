@@ -11,13 +11,13 @@
 
 	onMount(() => {
 		destroy_after(async () => {
-			assert.equal(has_scrollbar(column), false, 'does not have Y scrollbar when content height is less than column')
+			assert.equal(has_scrollbar ('y') (column), false, 'does not have Y scrollbar when content height is less than column')
 			content_height = 150
 			await tick()
-			assert.equal(has_scrollbar(column), true, 'has Y scrollbar when content height is greater than column')
+			assert.equal(has_scrollbar ('y') (column), true, 'has Y scrollbar when content height is greater than column')
 			scroll_y = false
 			await tick()
-			assert.equal(has_scrollbar(column), false, 'scroll_y = false disables scrolling')
+			assert.equal(has_scrollbar ('y') (column), false, 'scroll_y = false disables scrolling')
 		})
 	})
 </script>
