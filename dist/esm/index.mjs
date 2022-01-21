@@ -473,7 +473,7 @@ function styleInject(css, ref) {
   }
 }
 
-var css_248z = ".element_ekolm46{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-direction:row;-ms-flex-direction:row;flex-direction:row;-webkit-flex:0 0 auto;-ms-flex:0 0 auto;flex:0 0 auto;position:relative;box-sizing:border-box;overflow:visible;}\n";
+var css_248z = ".element_ekolm46{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-direction:row;-ms-flex-direction:row;flex-direction:row;-webkit-flex:0 0 auto;-ms-flex:0 0 auto;flex:0 0 auto;box-sizing:border-box;overflow:visible;}\n";
 styleInject(css_248z);
 
 const target_value = ({
@@ -493,14 +493,16 @@ const length_css = (property, length) => {
   return [length.type === 'px' ? `${property}: ${length.value}px;` : '', length.min.value > 0 ? `min-${property}: ${target_value(length.min)};` : '', length.max.value === Infinity ? '' : `max-${property}: ${target_value(length.max)};`].join(' ');
 };
 /*
- * styles necessary for a dom node child of a layout container
- */
+	 styles necessary for a dom node child of a layout container
+*/
 // static styles
 
 
 const element$1 = "element_ekolm46";
 
-const overflow_style = (axis, clip, scroll) => clip || scroll ? `overflow-${axis}: ${clip ? 'hidden' : 'auto'};` : ''; // dynamic styles
+const overflow_style = (axis, clip, scroll) => clip || scroll ? `overflow-${axis}: ${clip ? 'hidden' : 'auto'};` : '';
+
+const position = (anchor_x, anchor_y) => `position: ${anchor_x || anchor_y ? 'absolute' : 'relative'};`; // dynamic styles
 
 
 const element_style = ({
@@ -510,11 +512,13 @@ const element_style = ({
   opacity,
   x,
   y,
+  anchor_x,
+  anchor_y,
   clip_x,
   clip_y,
   scroll_x,
   scroll_y
-}) => [length_css('height', height), length_css('width', width), opacity == null ? '' : `opacity: ${opacity};`, padding == null ? '' : `padding: ${Array.isArray(padding) ? padding.map(n => `${n}px`).join(' ') : `${padding}px`};`, x || y ? `transform: translate3d(${x || 0}px, ${y || 0}px, 0);` : '', overflow_style('x', clip_x, scroll_x), overflow_style('y', clip_y, scroll_y)].join('');
+}) => [length_css('height', height), length_css('width', width), opacity == null ? '' : `opacity: ${opacity};`, padding == null ? '' : `padding: ${Array.isArray(padding) ? padding.map(n => `${n}px`).join(' ') : `${padding}px`};`, anchor_x ? `left: ${anchor_x[1] * 100}%; margin-right: ${anchor_x[1] * -100}%;` : '', anchor_y ? `top: ${anchor_y[1] * 100}%;` : '', position(anchor_x, anchor_y), x || y || anchor_x || anchor_y ? `transform: translate3d(calc(${(anchor_x?.[0] ?? 0) * -100}% + ${x || 0}px), calc(${(anchor_y?.[0] ?? 0) * -100}% + ${y || 0}px), 0);` : '', overflow_style('x', clip_x, scroll_x), overflow_style('y', clip_y, scroll_y)].join('');
 
 const space_between = 'space-between';
 const space_around = 'space-around';
@@ -904,8 +908,14 @@ class Element extends SvelteComponent {
 	}
 }
 
-var css_248z$2 = ".nearby_n1ymrolb{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;position:absolute;pointer-events:none;}\n.nearby_x_nc97fwj{top:0;z-index:1;height:100%;}\n.nearby_y_n1dmxc9z{left:0;z-index:1;width:100%;}\n.nearby_z_n91qj6k{top:0;left:0;height:100%;width:100%;}\n.in_back_i1ulrqav{z-index:0;}\n.in_front_i1xlmqx2{z-index:1;}\n.on_left_okq8kx3{right:100%;-webkit-box-pack:end;-webkit-justify-content:flex-end;-ms-flex-pack:end;justify-content:flex-end;}\n.on_right_o105wjvu{left:100%;}\n.above_ayr7vx7{bottom:100%;}\n.below_b1lubls{top:100%;}\n.nearby_child_n1iosxib{pointer-events:auto;}\n";
+var css_248z$2 = ".nearby_n1ymrolb{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;position:absolute !important;pointer-events:none;}\n.nearby_x_nc97fwj{top:0;z-index:1;height:100%;}\n.nearby_y_n1dmxc9z{left:0;z-index:1;width:100%;}\n.nearby_z_n91qj6k{top:0;left:0;height:100%;width:100%;}\n.in_back_i1ulrqav{z-index:0;}\n.in_front_i1xlmqx2{z-index:1;}\n.on_left_okq8kx3{right:100%;-webkit-box-pack:end;-webkit-justify-content:flex-end;-ms-flex-pack:end;justify-content:flex-end;}\n.on_right_o105wjvu{left:100%;}\n.above_ayr7vx7{bottom:100%;}\n.below_b1lubls{top:100%;}\n.nearby_child_n1iosxib{pointer-events:auto;}\n";
 styleInject(css_248z$2);
+
+/*
+	The `position` of `element_style` in `element.js` overrides this `position: absolute`, breaking nearby elements.
+	Nearby elements are deprecated by anchoring and should be removed in the future.
+	Meanwhile, this bug is fixed by `position: absolute !important;`.
+*/
 
 const nearby = "nearby_n1ymrolb";
 const nearby_x = "nearby_x_nc97fwj";
