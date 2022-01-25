@@ -14,10 +14,11 @@ const child_ratio_length = (property, parent, child) => child[property].type ===
 	: ''
 
 /*
- * styles necessary for a dom node containing one or more children (layout container)
- *
- * a layout container must choose an axis as its basis for layout, even if it can only contain one child
- */
+	This file is for styles for layout containers, which are elements that contain one or more children.
+
+	A layout container must choose an axis as its basis for layout, even if it can only contain one child,
+	because the implementation is based on flex, where everything is a row or column.
+*/
 
 // static styles
 export const layout = css`

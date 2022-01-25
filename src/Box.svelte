@@ -1,18 +1,17 @@
 <script>
-	import { css } from '@linaria/core'
 	import Element from './Element.svelte'
 	import Layout_context from './Layout_context.svelte'
 	import { content, format_length } from './length'
 	import { layout, layout_x, layout_x_style, layout_child, layout_x_child } from './layout'
-	import { nearby } from './nearby'
 	import { concat as classname_concat } from './util/classname'
 
+	/*
 	const box = css`
-		& > :not(${nearby}) ~ :not(${nearby}) {
+		& > :not(${anchored}) ~ :not(${anchored}) {
 			visibility: hidden;
 
 			&:before {
-				content: "Error: Box may only contain one child.";
+				content: "Error: Box may only contain one layout child.";
 				visibility: visible;
 				background: red;
 				color: white;
@@ -21,11 +20,13 @@
 				padding: 30px;
 			}
 
-			& ~ :not(${nearby}):before {
+			& ~ :not(${anchored}):before {
 				display: none;
 			}
 		}
 	`
+	*/
+
 	export let ref = undefined
 	export let style = ''
 	$: height = format_length('height' in $$props ? $$props.height : content)
