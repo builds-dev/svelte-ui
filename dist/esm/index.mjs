@@ -1116,7 +1116,7 @@ function instance$2($$self, $$props, $$invalidate) {
 
 		 $$invalidate(3, element_props = {
 			...$$restProps,
-			class: concat([$$props.class, box, layout_x, layout]),
+			class: concat([$$props.class, "box", layout_x, layout]),
 			height,
 			width
 		});
