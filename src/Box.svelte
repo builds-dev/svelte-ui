@@ -34,7 +34,7 @@
 	$: context_values = { height, width }
 	$: element_props = {
 		...$$restProps,
-		class: classname_concat([ $$props.class, box, layout_x, layout ]),
+		class: classname_concat([ $$props.class, 'box', layout_x, layout ]),
 		height,
 		width
 	}
