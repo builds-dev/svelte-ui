@@ -35,8 +35,6 @@ const overflow_style = (axis, clip, scroll) => clip || scroll
 	? `overflow-${axis}: ${clip ? 'hidden' : 'auto'};`
 	: ''
 
-const position = (anchor_x, anchor_y) => `position: ${anchor_x || anchor_y ? 'absolute' : 'relative'};`
-
 // dynamic styles
 export const element_style = (
 	{
@@ -63,7 +61,7 @@ export const element_style = (
 			: `padding: ${Array.isArray(padding) ? padding.map(n => `${n}px`).join(' ') : `${padding}px` };`,
 		anchor_x ? `left: ${anchor_x[1] * 100}%; margin-right: ${anchor_x[1] * -100}%;` : '',
 		anchor_y ? `top: ${anchor_y[1] * 100}%;` : '',
-		position (anchor_x, anchor_y),
+		`position: ${anchor_x || anchor_y ? 'absolute' : 'relative'};`,
 		x || y || anchor_x || anchor_y
 			?
 				`transform: translate3d(calc(${(anchor_x?.[0] ?? 0) * -100}% + ${x || 0}px), calc(${(anchor_y?.[0] ?? 0) * -100}% + ${y || 0}px), 0);`
