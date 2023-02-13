@@ -17,8 +17,13 @@ export default {
 	},
 	plugins: [
 		{
-			load: async function (id) {
-				return id.includes('build/test-components.js')
+			resolveId: source =>
+				source === '../build/test-components.js'
+					? { id: 'build/test-components.js' }
+					: null
+			,
+			load: async id => {
+				return id === 'build/test-components.js'
 					? {
 						code: await glob_module_files({
 							pattern: process.env.GLOB || './{src,test,tests}/**/*.{spec,test}.svelte',

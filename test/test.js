@@ -1,6 +1,6 @@
 import { suite } from 'uvu'
 import * as assert from 'uvu/assert'
-import tests from '../build/test-components'
+import tests from '../build/test-components.js'
 import { layout, layout_y } from '../src/layout'
 
 const keep_alive = !navigator.userAgent.toLowerCase().includes('electron')
