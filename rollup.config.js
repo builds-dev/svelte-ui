@@ -1,9 +1,11 @@
 import resolve from '@rollup/plugin-node-resolve'
 import svelte from 'rollup-plugin-svelte'
-import linaria from '@linaria/rollup'
+import linaria_cjs from '@linaria/rollup'
 import postcss from 'rollup-plugin-postcss'
-import { terser } from 'rollup-plugin-terser'
-import pkg from './package.json'
+import terser from '@rollup/plugin-terser'
+import pkg from './package.json' assert { type: 'json' }
+
+const linaria = linaria_cjs.default
 
 // HACK around linaria since it doesn't expose this as an option
 // require('stylis').set({ prefix: false })

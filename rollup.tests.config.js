@@ -1,11 +1,13 @@
 import resolve from '@rollup/plugin-node-resolve'
 import svelte from 'rollup-plugin-svelte'
-import linaria from '@linaria/rollup'
+import linaria_cjs from '@linaria/rollup'
 import postcss from 'rollup-plugin-postcss'
 import serve from 'rollup-plugin-serve'
 import livereload from 'rollup-plugin-livereload'
 import glob_module_files from 'glob-module-file'
 import browser_run from 'browser-run'
+
+const linaria = linaria_cjs.default
 
 export default {
 	input: './test/test.js',
